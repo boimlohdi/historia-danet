@@ -1,0 +1,2295 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#161B22">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Historia Danet">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<title>Historia Danet</title>
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --bg-base:    #0D1117;
+  --bg-card:    #161B22;
+  --bg-card2:   #1C232D;
+  --border:     #2A3340;
+  --border-b:   #3A4A5C;
+  --accent:     #00C2FF;
+  --accent-dim: #0091BF;
+  --accent-glow:rgba(0,194,255,0.15);
+  --pm:         #2DCC70;
+  --pm-dim:     rgba(45,204,112,0.15);
+  --cm:         #F39C12;
+  --cm-dim:     rgba(243,156,18,0.15);
+  --danger:     #E74C3C;
+  --text-1:     #E6EDF3;
+  --text-2:     #8B949E;
+  --text-3:     #4A5568;
+  --safe-top:   env(safe-area-inset-top, 0px);
+  --safe-bot:   env(safe-area-inset-bottom, 0px);
+}
+
+/* ═══════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{
+  height:100%; background:var(--bg-base);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  color:var(--text-1); overflow:hidden;
+}
+button{border:none;background:none;cursor:pointer;font-family:inherit;}
+input,textarea,select{font-family:inherit;outline:none;border:none;}
+select option{ background:var(--bg-card); color:var(--text-1); }
+textarea{resize:none;}
+
+/* ═══════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════ */
+#app{
+  height:100vh; height:100dvh;
+  display:flex; flex-direction:column;
+  max-width:480px; margin:0 auto;
+  position:relative; overflow:hidden;
+}
+
+/* ═══════════════════════════════════════════
+   SCREENS
+═══════════════════════════════════════════ */
+.screen{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  background:var(--bg-base);
+  transform:translateX(100%);
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  will-change:transform;
+}
+.screen.active { transform:translateX(0); }
+.screen.slide-left { transform:translateX(-30%); }
+
+/* ═══════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════ */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--bg-card);
+  padding:calc(var(--safe-top) + 14px) 20px 14px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.topbar-logo{
+  display:flex; align-items:center; gap:8px;
+  font-size:18px; font-weight:700; letter-spacing:1px;
+}
+.topbar-dot{
+  width:8px; height:8px; background:var(--accent);
+  border-radius:50%; animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+.back-btn{
+  width:34px; height:34px;
+  background:var(--bg-base); border:1px solid var(--border);
+  border-radius:8px; display:flex; align-items:center; justify-content:center;
+  font-size:20px; color:var(--text-2); cursor:pointer;
+}
+.page-title{ font-size:16px; font-weight:600; flex:1; padding-left:10px; }
+
+/* ═══════════════════════════════════════════
+   BOTTOM NAV
+═══════════════════════════════════════════ */
+.bottom-nav{
+  display:grid; grid-template-columns:repeat(3,1fr);
+  background:var(--bg-card);
+  border-top:1px solid var(--border);
+  padding-bottom:calc(var(--safe-bot) + 4px);
+  flex-shrink:0;
+}
+.nav-item{
+  display:flex; flex-direction:column; align-items:center;
+  padding:10px 4px 4px; cursor:pointer; gap:3px;
+}
+.nav-icon{ font-size:20px; opacity:.4; transition:opacity .2s; }
+.nav-label{ font-size:9px; color:var(--text-3); font-weight:500; }
+.nav-dot{ width:4px; height:4px; background:var(--accent); border-radius:2px; display:none; }
+.nav-item.active .nav-icon{ opacity:1; }
+.nav-item.active .nav-label{ color:var(--accent); }
+.nav-item.active .nav-dot{ display:block; }
+
+/* ═══════════════════════════════════════════
+   SCROLL AREA
+═══════════════════════════════════════════ */
+.scroll{
+  flex:1; overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+.scroll-pad{ padding:16px; display:flex; flex-direction:column; gap:14px; padding-bottom:32px; }
+
+/* ═══════════════════════════════════════════
+   CARDS & COMPONENTS
+═══════════════════════════════════════════ */
+.card{
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:12px; padding:14px;
+}
+.card2{ background:var(--bg-card2); border:1px solid var(--border); border-radius:12px; padding:14px; }
+
+/* Badge */
+.badge{
+  display:inline-flex; align-items:center;
+  padding:2px 8px; border-radius:4px;
+  font-size:10px; font-weight:700; letter-spacing:.5px;
+}
+.badge-pm{ background:var(--pm-dim); color:var(--pm); }
+.badge-cm{ background:var(--cm-dim); color:var(--cm); }
+.badge-accent{ background:var(--accent-glow); color:var(--accent); }
+
+/* Status pill */
+.pill{
+  padding:3px 10px; border-radius:20px;
+  font-size:10px; font-weight:700; letter-spacing:1px;
+}
+.pill-green{ background:var(--pm-dim); color:var(--pm); }
+.pill-orange{ background:var(--cm-dim); color:var(--cm); }
+
+/* Left border record */
+.rec-item{
+  background:var(--bg-card); border:1px solid var(--border);
+  border-left:3px solid; border-radius:10px;
+  padding:12px; display:flex; flex-direction:column; gap:8px;
+}
+.rec-item.pm{ border-left-color:var(--pm); }
+.rec-item.cm{ border-left-color:var(--cm); }
+.rec-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+.rec-title{ font-size:13px; font-weight:600; color:var(--text-1); flex:1; }
+.rec-meta{ display:flex; gap:16px; }
+.meta-item{ display:flex; flex-direction:column; gap:2px; }
+.meta-label{ font-size:9px; color:var(--text-3); text-transform:uppercase; letter-spacing:.5px; }
+.meta-val{ font-size:11px; color:var(--text-2); font-weight:500; }
+
+/* ═══════════════════════════════════════════
+   FORM ELEMENTS
+═══════════════════════════════════════════ */
+.field-group{ display:flex; flex-direction:column; gap:6px; }
+.field-label{
+  font-size:10px; font-weight:600;
+  color:var(--text-3); letter-spacing:1px; text-transform:uppercase;
+}
+.field-input{
+  display:flex; align-items:center;
+  background:var(--bg-card);
+  border:1.5px solid var(--border);
+  border-radius:10px; padding:11px 14px; gap:10px;
+}
+.field-input.focused{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+.field-input input,.field-input textarea{
+  flex:1; background:none; color:var(--text-1);
+  font-size:14px;
+}
+.field-input input::placeholder,.field-input textarea::placeholder{ color:var(--text-3); }
+.field-icon{ font-size:15px; }
+textarea.field-ta{
+  width:100%; background:var(--bg-card);
+  border:1.5px solid var(--border); border-radius:10px;
+  padding:11px 14px; color:var(--text-1); font-size:13px;
+  min-height:80px;
+}
+textarea.field-ta::placeholder{ color:var(--text-3); }
+.field-input input:focus-visible{ outline:none; }
+
+/* Chip selector */
+.chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
+.chip{
+  padding:6px 14px; border-radius:20px;
+  border:1.5px solid var(--border);
+  font-size:11px; font-weight:600;
+  color:var(--text-2); background:var(--bg-card);
+  cursor:pointer; transition:all .15s;
+}
+.chip.active-accent{ border-color:var(--accent); color:var(--accent); background:var(--accent-glow); }
+.chip.active-pm{ border-color:var(--pm); color:var(--pm); background:var(--pm-dim); }
+.chip.active-cm{ border-color:var(--cm); color:var(--cm); background:var(--cm-dim); }
+.chip.active-danger{ border-color:var(--danger); color:var(--danger); background:rgba(231,76,60,.12); }
+
+/* Type selector big */
+.type-selector{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.type-opt{
+  border:2px solid var(--border); border-radius:12px;
+  padding:16px 10px; text-align:center;
+  background:var(--bg-card); cursor:pointer; transition:all .15s;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.type-opt.sel-pm{ border-color:var(--pm); background:var(--pm-dim); }
+.type-opt.sel-cm{ border-color:var(--cm); background:var(--cm-dim); }
+.type-opt-icon{ font-size:24px; }
+.type-opt-label{ font-size:15px; font-weight:700; color:var(--text-3); }
+.type-opt.sel-pm .type-opt-label{ color:var(--pm); }
+.type-opt.sel-cm .type-opt-label{ color:var(--cm); }
+.type-opt-sub{ font-size:10px; color:var(--text-3); }
+
+/* Buttons */
+.btn{
+  width:100%; padding:14px; border-radius:12px;
+  font-size:16px; font-weight:700; letter-spacing:1px;
+  cursor:pointer; transition:opacity .15s; border:none;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn:active{ opacity:.8; }
+.btn-accent{ background:var(--accent); color:#001A2E; }
+.btn-pm{ background:var(--pm); color:#001A10; }
+.btn-cm{ background:var(--cm); color:#1A0E00; }
+.btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+/* FAB */
+.fab{
+  position:absolute; bottom:calc(var(--safe-bot) + 24px); right:20px;
+  width:52px; height:52px; background:var(--accent);
+  border-radius:14px; display:flex; align-items:center; justify-content:center;
+  font-size:28px; color:#001A2E; font-weight:700;
+  box-shadow:0 4px 20px rgba(0,194,255,.45);
+  cursor:pointer; line-height:1;
+}
+
+/* ═══════════════════════════════════════════
+   STAT CARDS
+═══════════════════════════════════════════ */
+.stats-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.stat-card{
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:12px; padding:14px; overflow:hidden; position:relative;
+}
+.stat-bar{
+  position:absolute; top:0; left:0; right:0; height:2px;
+}
+.stat-badge{ font-size:9px; font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block; margin-top:4px; }
+.stat-num{ font-size:32px; font-weight:700; line-height:1.1; margin-top:4px; }
+.stat-desc{ font-size:10px; color:var(--text-3); margin-top:3px; }
+
+/* Scan button */
+.scan-big{
+  display:flex; align-items:center; gap:16px;
+  background:#001D35; border:1.5px solid var(--accent);
+  border-radius:16px; padding:20px; cursor:pointer;
+}
+.scan-icon-wrap{
+  width:52px; height:52px; background:var(--accent-glow);
+  border:1.5px solid var(--accent); border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:26px; flex-shrink:0;
+}
+.scan-text{ flex:1; }
+.scan-title{ font-size:17px; font-weight:700; }
+.scan-sub{ font-size:11px; color:var(--text-2); margin-top:3px; }
+
+/* Activity item */
+.act-item{
+  display:flex; align-items:center; gap:12px;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-left:3px solid; border-radius:10px; padding:10px 12px;
+}
+.act-item.pm{ border-left-color:var(--pm); }
+.act-item.cm{ border-left-color:var(--cm); }
+.act-info{ flex:1; min-width:0; }
+.act-name{ font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.act-sub{ font-size:10px; color:var(--text-2); margin-top:2px; }
+
+/* Section head */
+.sec-head{ display:flex; justify-content:space-between; align-items:center; }
+.sec-title{ font-size:11px; font-weight:700; color:var(--text-2); letter-spacing:1px; }
+.sec-link{ font-size:11px; color:var(--accent); cursor:pointer; }
+
+/* ═══════════════════════════════════════════
+   LOGIN SCREEN
+═══════════════════════════════════════════ */
+#screen-login{
+  background:var(--bg-base);
+  transform:translateX(0);
+}
+.login-hero{
+  background:linear-gradient(160deg,#0D1F33 0%,var(--bg-base) 65%);
+  padding:calc(var(--safe-top) + 48px) 28px 28px;
+  border-bottom:1px solid rgba(0,194,255,.2);
+  flex-shrink:0;
+}
+.login-logo{ display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+.logo-icon{
+  width:44px; height:44px; background:var(--accent);
+  border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-size:22px;
+}
+.brand-name{ font-size:20px; font-weight:700; letter-spacing:1px; }
+.brand-sub{ font-size:9px; color:var(--accent); letter-spacing:2px; margin-top:2px; }
+.login-title{ font-size:22px; font-weight:700; margin-bottom:4px; }
+.login-sub{ font-size:12px; color:var(--text-2); }
+
+/* ═══════════════════════════════════════════
+   QR SCANNER SCREEN
+═══════════════════════════════════════════ */
+.camera-area{
+  flex:1; background:#000; position:relative;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+#qr-video{
+  width:100%; height:100%;
+  object-fit:cover; position:absolute; inset:0;
+}
+.qr-overlay{
+  position:relative; z-index:2;
+  width:220px; height:220px;
+}
+.qr-corner{
+  position:absolute; width:28px; height:28px;
+  border-color:var(--accent); border-style:solid;
+}
+.qr-corner.tl{ top:0;left:0;border-width:3px 0 0 3px; }
+.qr-corner.tr{ top:0;right:0;border-width:3px 3px 0 0; }
+.qr-corner.bl{ bottom:0;left:0;border-width:0 0 3px 3px; }
+.qr-corner.br{ bottom:0;right:0;border-width:0 3px 3px 0; }
+.scan-line{
+  position:absolute; left:8px; right:8px; height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  box-shadow:0 0 8px var(--accent);
+  animation:scan-anim 2s ease-in-out infinite;
+}
+@keyframes scan-anim{
+  0%{ top:10px; }
+  50%{ top:calc(100% - 12px); }
+  100%{ top:10px; }
+}
+.scan-status{
+  position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,.65); padding:5px 14px; border-radius:20px;
+  border:1px solid rgba(255,255,255,.1);
+  font-size:10px; color:rgba(255,255,255,.7);
+  display:flex; align-items:center; gap:6px; white-space:nowrap;
+}
+.scan-pulse{ width:6px; height:6px; background:var(--accent); border-radius:50%; animation:pulse 1.2s infinite; }
+.scan-controls-bar{
+  background:rgba(0,0,0,.9); padding:14px 24px;
+  display:flex; justify-content:space-around;
+  border-top:1px solid rgba(255,255,255,.08); flex-shrink:0;
+}
+.scan-ctrl{
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  cursor:pointer;
+}
+.scan-ctrl-icon{
+  width:42px; height:42px;
+  border:1.5px solid rgba(255,255,255,.2); border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:18px;
+}
+.scan-ctrl-icon.on{ border-color:var(--accent); background:var(--accent-glow); }
+.scan-ctrl-label{ font-size:10px; color:rgba(255,255,255,.5); }
+
+/* Manual input overlay — bottom sheet style */
+.manual-panel{
+  position:absolute;
+  bottom:0; left:0; right:0;
+  background:var(--bg-card);
+  border-top:1px solid var(--border);
+  border-radius:20px 20px 0 0;
+  padding:20px 20px 32px;
+  display:flex; flex-direction:column; gap:12px;
+  z-index:10; overflow-y:auto;
+  max-height:75%;
+  transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+.manual-panel.show{
+  transform:translateY(0);
+}
+/* Drag handle */
+.manual-panel::before{
+  content:'';
+  width:40px; height:4px;
+  background:var(--border-b);
+  border-radius:2px;
+  margin:0 auto 4px;
+  display:block;
+}
+.manual-header{
+  display:flex; align-items:center; justify-content:space-between;
+}
+.manual-title{ font-size:18px; font-weight:700; }
+
+/* ═══════════════════════════════════════════
+   DEVICE HEADER IN HISTORY SCREEN
+═══════════════════════════════════════════ */
+.device-card-header{
+  display:flex; align-items:center; gap:12px;
+  background:var(--bg-card2); border:1px solid var(--border);
+  border-radius:12px; padding:12px 14px;
+}
+.dev-icon{
+  width:46px; height:46px; background:#1A3A5C;
+  border:1.5px solid var(--border-b); border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; flex-shrink:0;
+}
+.dev-name{ font-size:15px; font-weight:700; }
+.dev-code{ font-size:10px; color:var(--accent); letter-spacing:1px; margin-top:2px; }
+.dev-loc{ font-size:10px; color:var(--text-2); margin-top:3px; }
+
+/* ═══════════════════════════════════════════
+   FILTER TABS
+═══════════════════════════════════════════ */
+.filter-bar{
+  display:flex; align-items:center; gap:8px;
+  padding:12px 16px; border-bottom:1px solid var(--border);
+  background:var(--bg-base); flex-shrink:0; overflow-x:auto;
+}
+.filter-tab{
+  padding:5px 14px; border-radius:20px;
+  border:1.5px solid var(--border); font-size:11px; font-weight:700;
+  color:var(--text-2); background:var(--bg-card); cursor:pointer;
+  white-space:nowrap; flex-shrink:0;
+}
+.filter-tab.f-all{ border-color:var(--accent); color:var(--accent); background:var(--accent-glow); }
+.filter-tab.f-pm{ border-color:var(--pm); color:var(--pm); background:var(--pm-dim); }
+.filter-tab.f-cm{ border-color:var(--cm); color:var(--cm); background:var(--cm-dim); }
+.rec-count{ margin-left:auto; font-size:10px; color:var(--text-3); flex-shrink:0; }
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+#toast{
+  position:fixed; bottom:calc(var(--safe-bot) + 100px); left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:#1C2A1E; border:1px solid var(--pm);
+  color:var(--pm); padding:10px 20px; border-radius:10px;
+  font-size:13px; font-weight:600;
+  opacity:0; transition:all .3s; pointer-events:none; z-index:999;
+  white-space:nowrap;
+}
+#toast.error{ background:#2A1C1C; border-color:var(--danger); color:var(--danger); }
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ═══════════════════════════════════════════
+   LOADING SPINNER
+═══════════════════════════════════════════ */
+.spinner{
+  width:32px; height:32px;
+  border:3px solid var(--border); border-top-color:var(--accent);
+  border-radius:50%; animation:spin .7s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.loading-wrap{
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:14px; flex:1; padding:40px;
+}
+.loading-text{ font-size:13px; color:var(--text-2); }
+
+/* Empty state */
+.empty-state{
+  display:flex; flex-direction:column; align-items:center;
+  padding:48px 24px; gap:12px; text-align:center;
+}
+.empty-icon{ font-size:40px; }
+.empty-title{ font-size:16px; font-weight:700; }
+.empty-text{ font-size:13px; color:var(--text-3); }
+
+/* Server info */
+.server-info{
+  text-align:center; font-size:11px; color:var(--text-3);
+  padding:8px; border:1px dashed var(--border); border-radius:8px;
+}
+
+/* Row fields */
+.row-fields{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+/* findings box */
+.findings-box{
+  background:var(--bg-base); border:1px solid var(--border);
+  border-radius:8px; padding:10px;
+}
+.findings-label{ font-size:9px; color:var(--text-3); font-weight:600; }
+.findings-text{ font-size:11px; color:var(--text-2); margin-top:3px; }
+
+/* rec bottom */
+.rec-bottom{ display:flex; align-items:center; gap:6px; }
+.status-dot{ width:6px; height:6px; border-radius:3px; }
+
+/* greeting */
+.greeting{ font-size:13px; color:var(--text-2); }
+.greeting strong{ color:var(--text-1); }
+</style>
+</head>
+<body>
+
+<!-- ══ TOAST ══ -->
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     APP SHELL
+══════════════════════════════════════════ -->
+<div id="app">
+
+<!-- ╔══════════════════════════════════════╗
+     ║  SCREEN 1: LOGIN                    ║
+     ╚══════════════════════════════════════╝ -->
+<div class="screen active" id="screen-login">
+  <div class="login-hero">
+    <div class="login-logo">
+      <div class="logo-icon">⚙️</div>
+      <div>
+        <div class="brand-name">HISTORIA DANET</div>
+        <div class="brand-sub">MAINTENANCE TRACKER</div>
+      </div>
+    </div>
+    <div class="login-title">Selamat Datang</div>
+    <div class="login-sub">Masuk untuk mengelola data maintenance</div>
+  </div>
+
+  <div class="scroll">
+    <div class="scroll-pad">
+      <div class="field-group">
+        <div class="field-label">EMAIL</div>
+        <div class="field-input" id="wrap-email">
+          <span class="field-icon">👤</span>
+          <input id="inp-email" type="email" placeholder="operator@danet.id"
+            autocomplete="email" autocapitalize="none">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">PASSWORD</div>
+        <div class="field-input" id="wrap-pwd">
+          <span class="field-icon">🔒</span>
+          <input id="inp-pwd" type="password" placeholder="••••••••">
+          <button onclick="togglePwd()" style="font-size:16px;padding:4px;">👁️</button>
+        </div>
+      </div>
+
+      <button class="btn btn-accent" id="btn-login" onclick="doLogin()">MASUK</button>
+
+      <div class="server-info">
+        🔀 Proxy: <strong>172.17.87.135</strong> &nbsp;·&nbsp; 🗄️ DB: <strong>NocoDB via /api/</strong>
+      </div>
+
+      <div style="text-align:center;font-size:11px;color:var(--text-3)">
+        Historia Danet v1.0.0 · Danet Engineering
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  SCREEN 2: HOME / DASHBOARD         ║
+     ╚══════════════════════════════════════╝ -->
+<div class="screen" id="screen-home">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="topbar-dot"></div>
+      HISTORIA
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button onclick="doLogout()" style="font-size:11px;color:var(--text-3);padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-base);">Keluar</button>
+      <div id="home-avatar" style="width:34px;height:34px;background:#1A3A5C;border-radius:50%;border:1.5px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--accent);">A</div>
+    </div>
+  </div>
+
+  <div class="scroll" id="home-scroll">
+    <div class="scroll-pad">
+      <div>
+        <div class="greeting" id="home-greeting">Halo, <strong>Operator</strong> 👋</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:3px;" id="home-date"></div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-bar" style="background:linear-gradient(90deg,var(--pm),transparent)"></div>
+          <div class="stat-badge badge-pm">PM</div>
+          <div class="stat-num" style="color:var(--pm)" id="stat-pm">–</div>
+          <div class="stat-desc">Total PM bulan ini</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-bar" style="background:linear-gradient(90deg,var(--cm),transparent)"></div>
+          <div class="stat-badge badge-cm">CM</div>
+          <div class="stat-num" style="color:var(--cm)" id="stat-cm">–</div>
+          <div class="stat-desc">Total CM bulan ini</div>
+        </div>
+      </div>
+
+      <div class="scan-big" onclick="gotoScan()">
+        <div class="scan-icon-wrap">📷</div>
+        <div class="scan-text">
+          <div class="scan-title">Scan QR Perangkat</div>
+          <div class="scan-sub">Arahkan kamera ke QR code perangkat</div>
+        </div>
+        <span style="font-size:22px;color:var(--accent);">›</span>
+      </div>
+
+      <div class="sec-head">
+        <div class="sec-title">AKTIVITAS TERBARU</div>
+        <div class="sec-link" onclick="navTo('history')">Lihat Semua ›</div>
+      </div>
+
+      <div id="home-recent">
+        <div class="loading-wrap" style="padding:20px;">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav" id="home-bottom-nav">
+    <div class="nav-item active" id="nav-home" onclick="navTo('home')">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Home</div>
+      <div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" id="nav-scan" onclick="gotoScan()">
+      <div class="nav-icon">📷</div>
+      <div class="nav-label">Scan</div>
+      <div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" id="nav-history" onclick="navTo('history')">
+      <div class="nav-icon">📋</div>
+      <div class="nav-label">History</div>
+      <div class="nav-dot"></div>
+    </div>
+    <!-- Menu Perangkat — hanya muncul untuk admin -->
+    <div class="nav-item" id="nav-devices" onclick="navTo('devices')" style="display:none;">
+      <div class="nav-icon">⚙️</div>
+      <div class="nav-label">Perangkat</div>
+      <div class="nav-dot"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  SCREEN 3: QR SCAN                  ║
+     ╚══════════════════════════════════════╝ -->
+<div class="screen" id="screen-scan">
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()">‹</button>
+    <div class="page-title">Scan QR Perangkat</div>
+    <div style="width:34px"></div>
+  </div>
+
+  <!-- Kamera langsung aktif -->
+  <div class="camera-area" id="camera-area">
+    <video id="qr-video" autoplay muted playsinline></video>
+    <div class="qr-overlay" id="qr-overlay">
+      <div class="qr-corner tl"></div>
+      <div class="qr-corner tr"></div>
+      <div class="qr-corner bl"></div>
+      <div class="qr-corner br"></div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="scan-status" id="scan-status">
+      <div class="scan-pulse"></div>
+      <span>Arahkan ke QR Code perangkat...</span>
+    </div>
+  </div>
+
+  <!-- Kontrol bawah: Flash + tombol beralih ke manual -->
+  <div class="scan-controls-bar">
+    <div class="scan-ctrl" onclick="toggleFlash()">
+      <div class="scan-ctrl-icon" id="flash-icon">💡</div>
+      <div class="scan-ctrl-label">Flash</div>
+    </div>
+    <div class="scan-ctrl" onclick="openManual()">
+      <div class="scan-ctrl-icon">⌨️</div>
+      <div class="scan-ctrl-label">Input Manual</div>
+    </div>
+  </div>
+
+  <!-- Manual Panel — muncul sebagai bottom sheet -->
+  <div class="manual-panel" id="manual-panel">
+    <div class="manual-header">
+      <div class="manual-title">🔍 Cari Manual</div>
+      <button onclick="closeManual()" style="font-size:22px;background:none;border:none;cursor:pointer;color:var(--text-2)">✕</button>
+    </div>
+    <p style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Masukkan kode perangkat jika QR tidak terbaca</p>
+
+    <div class="field-group">
+      <div class="field-label">KODE PERANGKAT</div>
+      <div class="field-input">
+        <span class="field-icon">🔍</span>
+        <input id="inp-code" type="text" placeholder="HDN-2024-A12"
+          style="text-transform:uppercase;letter-spacing:1px;font-weight:600;">
+      </div>
+    </div>
+    <button class="btn btn-accent" onclick="searchByCode()">CARI PERANGKAT</button>
+
+    <div style="font-size:10px;color:var(--text-3);letter-spacing:1px;margin-top:12px;">PERANGKAT TERDAFTAR:</div>
+    <div id="quick-devices" style="display:flex;flex-direction:column;gap:8px;margin-top:6px;"></div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  SCREEN 4: DEVICE HISTORY           ║
+     ╚══════════════════════════════════════╝ -->
+<div class="screen" id="screen-device">
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()">‹</button>
+    <div class="page-title">Riwayat Perangkat</div>
+  </div>
+
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--bg-card);flex-shrink:0;">
+    <div class="device-card-header" id="device-header">
+      <div class="dev-icon">⚙️</div>
+      <div style="flex:1;min-width:0;">
+        <div class="dev-name" id="dev-name">–</div>
+        <div class="dev-code" id="dev-code">–</div>
+        <div class="dev-loc" id="dev-loc">–</div>
+      </div>
+      <div class="pill pill-green" id="dev-status">AKTIF</div>
+    </div>
+  </div>
+
+  <div class="filter-bar" id="filter-bar">
+    <button class="filter-tab f-all" onclick="setFilter('Semua',this)">Semua</button>
+    <button class="filter-tab" onclick="setFilter('PM',this)">PM</button>
+    <button class="filter-tab" onclick="setFilter('CM',this)">CM</button>
+    <div class="rec-count" id="rec-count">0 record</div>
+  </div>
+
+  <div class="scroll" id="device-scroll">
+    <div class="scroll-pad" id="device-records">
+      <div class="loading-wrap"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <div class="fab" onclick="gotoAddRecord()">＋</div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  SCREEN 5: ADD RECORD               ║
+     ╚══════════════════════════════════════╝ -->
+<div class="screen" id="screen-add">
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()">‹</button>
+    <div class="page-title">Tambah <span style="color:var(--accent)">Record</span></div>
+  </div>
+
+  <div class="scroll">
+    <div class="scroll-pad">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;">
+        <div style="font-size:9px;color:var(--text-3);letter-spacing:1px;">PERANGKAT:</div>
+        <div style="font-size:14px;font-weight:700;margin-top:2px;" id="add-dev-name">–</div>
+        <div style="font-size:10px;color:var(--accent);letter-spacing:1px;margin-top:2px;" id="add-dev-code">–</div>
+      </div>
+
+      <!-- Type Selector -->
+      <div class="type-selector">
+        <div class="type-opt sel-pm" id="opt-pm" onclick="selectType('PM')">
+          <div class="type-opt-icon">🔧</div>
+          <div class="type-opt-label">PM</div>
+          <div class="type-opt-sub">Preventive</div>
+        </div>
+        <div class="type-opt" id="opt-cm" onclick="selectType('CM')">
+          <div class="type-opt-icon">🔨</div>
+          <div class="type-opt-label">CM</div>
+          <div class="type-opt-sub">Corrective</div>
+        </div>
+      </div>
+
+      <!-- Form fields -->
+      <div class="field-group">
+        <div class="field-label">JUDUL PEKERJAAN *</div>
+        <div class="field-input"><input id="f-title" type="text" placeholder="Pengecekan Rutin Bulanan"></div>
+      </div>
+
+      <div class="row-fields">
+        <div class="field-group">
+          <div class="field-label">TANGGAL *</div>
+          <div class="field-input"><input id="f-date" type="date"></div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">DURASI (JAM)</div>
+          <div class="field-input"><input id="f-dur" type="number" placeholder="2.5" step="0.5" min="0"></div>
+        </div>
+      </div>
+
+      <div class="row-fields">
+        <div class="field-group">
+          <div class="field-label">JAM MULAI</div>
+          <div class="field-input"><input id="f-start" type="time" value="08:00"></div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">JAM SELESAI</div>
+          <div class="field-input"><input id="f-end" type="time"></div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">NAMA TEKNISI *</div>
+        <div class="field-input"><input id="f-tech" type="text" placeholder="Nama teknisi"></div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">STATUS</div>
+        <div class="chip-row">
+          <div class="chip active-accent" data-status="selesai" onclick="selStatus(this)">Selesai</div>
+          <div class="chip" data-status="dalam proses" onclick="selStatus(this)">Dalam Proses</div>
+          <div class="chip" data-status="ditunda" onclick="selStatus(this)">Ditunda</div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">PRIORITAS</div>
+        <div class="chip-row">
+          <div class="chip" data-prio="rendah" onclick="selPrio(this)">Rendah</div>
+          <div class="chip active-accent" data-prio="normal" onclick="selPrio(this)">Normal</div>
+          <div class="chip" data-prio="tinggi" onclick="selPrio(this)" style="">Tinggi</div>
+          <div class="chip" data-prio="kritis" onclick="selPrio(this)">Kritis</div>
+        </div>
+      </div>
+
+      <div class="field-group" id="wrap-next-sched" style="display:none;">
+        <div class="field-label">JADWAL PM BERIKUTNYA</div>
+        <div class="field-input"><input id="f-next" type="date"></div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">DESKRIPSI</div>
+        <textarea class="field-ta" id="f-desc" placeholder="Deskripsi detail pekerjaan..."></textarea>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">TEMUAN / FINDINGS</div>
+        <textarea class="field-ta" id="f-findings" placeholder="Kondisi perangkat saat diperiksa..."></textarea>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">TINDAKAN YANG DILAKUKAN</div>
+        <textarea class="field-ta" id="f-action" placeholder="Tindakan yang sudah dilakukan..."></textarea>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">REKOMENDASI</div>
+        <textarea class="field-ta" id="f-recom" placeholder="Rekomendasi tindak lanjut..."></textarea>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">BIAYA (Rp)</div>
+        <div class="field-input"><input id="f-cost" type="number" placeholder="0" value="0" min="0"></div>
+      </div>
+
+      <button class="btn btn-pm" id="btn-save" onclick="saveRecord()">✓  SIMPAN RECORD PM</button>
+      <div style="height:20px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  SCREEN 6: ALL HISTORY              ║
+     ╚══════════════════════════════════════╝ -->
+<div class="screen" id="screen-history">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="topbar-dot"></div>
+      History
+    </div>
+    <div style="font-size:11px;color:var(--text-3);" id="hist-count">0 record</div>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-tab f-all" onclick="setHistFilter('Semua',this)">Semua</button>
+    <button class="filter-tab" onclick="setHistFilter('PM',this)">PM</button>
+    <button class="filter-tab" onclick="setHistFilter('CM',this)">CM</button>
+  </div>
+
+  <div class="scroll">
+    <div class="scroll-pad" id="hist-list">
+      <div class="loading-wrap"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item" id="nav-home2" onclick="navTo('home')">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Home</div>
+      <div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" id="nav-scan2" onclick="gotoScan()">
+      <div class="nav-icon">📷</div>
+      <div class="nav-label">Scan</div>
+      <div class="nav-dot"></div>
+    </div>
+    <div class="nav-item active" id="nav-history2" onclick="navTo('history')">
+      <div class="nav-icon">📋</div>
+      <div class="nav-label">History</div>
+      <div class="nav-dot"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  SCREEN 7: KELOLA PERANGKAT (ADMIN) ║
+     ╚══════════════════════════════════════╝ -->
+<div class="screen" id="screen-devices">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="topbar-dot"></div>
+      Perangkat
+    </div>
+    <div style="font-size:11px;color:var(--text-3);" id="dev-count-top">0 perangkat</div>
+  </div>
+
+  <!-- Search + Tombol Tambah -->
+  <div style="padding:12px 16px;display:flex;gap:10px;border-bottom:1px solid var(--border);flex-shrink:0;">
+    <input id="dev-search" type="text" placeholder="🔍 Cari perangkat..."
+      oninput="filterDevices(this.value)"
+      style="flex:1;background:var(--bg-card);border:1.5px solid var(--border);border-radius:10px;
+             padding:9px 14px;color:var(--text-1);font-size:13px;outline:none;">
+    <button onclick="openAddDevice()"
+      style="background:var(--accent);color:#001A2E;border:none;border-radius:10px;
+             padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">
+      ＋ Tambah
+    </button>
+  </div>
+
+  <!-- Daftar Perangkat -->
+  <div class="scroll">
+    <div class="scroll-pad" id="devices-list">
+      <div class="loading-wrap"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav Admin -->
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="navTo('home')">
+      <div class="nav-icon">🏠</div><div class="nav-label">Home</div><div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" onclick="gotoScan()">
+      <div class="nav-icon">📷</div><div class="nav-label">Scan</div><div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" onclick="navTo('history')">
+      <div class="nav-icon">📋</div><div class="nav-label">History</div><div class="nav-dot"></div>
+    </div>
+    <div class="nav-item active" onclick="navTo('devices')">
+      <div class="nav-icon">⚙️</div><div class="nav-label">Perangkat</div><div class="nav-dot"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  MODAL: TAMBAH / EDIT PERANGKAT     ║
+     ╚══════════════════════════════════════╝ -->
+<div class="overlay" id="modal-device" style="position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:none;align-items:flex-end;justify-content:center;z-index:200;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);
+    border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;
+    max-height:90vh;overflow-y:auto;">
+
+    <!-- Handle -->
+    <div style="width:40px;height:4px;background:var(--border-b);border-radius:2px;margin:0 auto 16px;"></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-size:17px;font-weight:700;" id="modal-dev-title">Tambah Perangkat</div>
+      <button onclick="closeDeviceModal()"
+        style="width:30px;height:30px;background:var(--bg-base);border:1px solid var(--border);
+               border-radius:7px;font-size:16px;color:var(--text-2);cursor:pointer;">✕</button>
+    </div>
+
+    <input type="hidden" id="dev-edit-id">
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field-group">
+        <div class="field-label">KODE PERANGKAT *</div>
+        <div class="field-input">
+          <input id="dev-f-code" type="text" placeholder="HDN-2024-A12"
+            style="text-transform:uppercase;letter-spacing:1px;font-weight:600;">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">NAMA PERANGKAT *</div>
+        <div class="field-input"><input id="dev-f-name" type="text" placeholder="Kompresor Udara #A12"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field-group">
+          <div class="field-label">KATEGORI *</div>
+          <div class="field-input">
+            <select id="dev-f-cat" style="flex:1;background:var(--bg-base);color:var(--text-1);font-size:13px;border:none;outline:none;width:100%;">
+              <option value="Data Network">Data Network</option>
+              <option value="Tower Set">Tower Set</option>
+              <option value="VHF-Icom">VHF-Icom</option>
+              <option value="Crashbell Analogue">Crashbell Analogue</option>
+              <option value="Crashbell Digital">Crashbell Digital</option>
+              <option value="IGCS">IGCS</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">STATUS</div>
+          <div class="field-input">
+            <select id="dev-f-status" style="flex:1;background:var(--bg-base);color:var(--text-1);font-size:13px;border:none;outline:none;width:100%;">
+              <option value="aktif">Aktif</option>
+              <option value="non-aktif">Non-Aktif</option>
+              <option value="rusak">Rusak</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">LOKASI *</div>
+        <div class="field-input"><input id="dev-f-loc" type="text" placeholder="Lantai 2, Area Produksi"></div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">AREA</div>
+        <div class="field-input"><input id="dev-f-area" type="text" placeholder="Area Produksi"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field-group">
+          <div class="field-label">MEREK</div>
+          <div class="field-input"><input id="dev-f-brand" type="text" placeholder="Atlas Copco"></div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">MODEL</div>
+          <div class="field-input"><input id="dev-f-model" type="text" placeholder="GA15+"></div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">NOMOR SERI</div>
+        <div class="field-input"><input id="dev-f-serial" type="text" placeholder="SN-AC-2024-001"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field-group">
+          <div class="field-label">TGL PASANG</div>
+          <div class="field-input"><input id="dev-f-install" type="date"></div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">GARANSI S/D</div>
+          <div class="field-input"><input id="dev-f-warranty" type="date"></div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">CATATAN</div>
+        <textarea id="dev-f-notes" class="field-ta" placeholder="Catatan tambahan..."></textarea>
+      </div>
+
+      <button id="btn-save-device" onclick="saveDevice()"
+        style="width:100%;padding:14px;background:var(--accent);color:#001A2E;
+               border:none;border-radius:12px;font-size:15px;font-weight:700;
+               letter-spacing:1px;cursor:pointer;margin-top:4px;">
+        ✓ &nbsp;SIMPAN PERANGKAT
+      </button>
+      <div style="height:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║  MODAL: QR CODE VIEWER              ║
+     ╚══════════════════════════════════════╝ -->
+<div id="modal-qr" style="position:fixed;inset:0;background:rgba(0,0,0,.8);
+  display:none;align-items:center;justify-content:center;z-index:300;padding:24px;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);
+    border-radius:20px;padding:24px;width:100%;max-width:320px;text-align:center;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:700;" id="qr-modal-title">QR Code Perangkat</div>
+      <button onclick="closeQRModal()"
+        style="width:30px;height:30px;background:var(--bg-base);border:1px solid var(--border);
+               border-radius:7px;font-size:16px;color:var(--text-2);cursor:pointer;">✕</button>
+    </div>
+    <div id="qr-modal-device-name"
+      style="font-size:12px;color:var(--text-2);margin-bottom:16px;"></div>
+    <div style="background:white;padding:16px;border-radius:14px;display:inline-block;margin-bottom:16px;">
+      <canvas id="qr-modal-canvas" width="200" height="200"></canvas>
+    </div>
+    <div id="qr-modal-code"
+      style="font-family:monospace;font-size:14px;color:var(--accent);
+             letter-spacing:2px;font-weight:700;margin-bottom:20px;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="downloadQRModal()"
+        style="padding:12px;background:var(--pm);color:#001A10;border:none;
+               border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">
+        ⬇️ Download
+      </button>
+      <button onclick="printQRModal()"
+        style="padding:12px;background:none;border:1.5px solid var(--border);
+               color:var(--text-2);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">
+        🖨️ Print
+      </button>
+    </div>
+    <div style="margin-top:12px;font-size:10px;color:var(--text-3);">
+      Scan QR code ini dengan aplikasi Historia Danet
+    </div>
+  </div>
+</div>
+
+</div><!-- end #app -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   HISTORIA DANET — Web App JavaScript
+   NocoDB API: http://172.17.87.135:8080
+═══════════════════════════════════════════════════════════ */
+
+// ── CONFIG ──
+const CFG = {
+  // ✅ Satu alamat proxy — HP cukup akses ini saja
+  BASE:  'http://172.17.87.135',        // Nginx Reverse Proxy
+  // Nginx akan forward /api/ → NocoDB secara otomatis
+  TOKEN: 'm3C7O-OLFIoNesNDcgYB_UQVDIfbMYLQiNo8-bSB',
+  WEB:   'http://172.17.164.100',       // Windows XAMPP (diakses via proxy)
+};
+const H = { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' };
+
+// ── STATE ──
+let session = null;
+let baseId  = null;
+let tables  = {};   // { tableName: tableId }
+let currentDevice  = null;
+let currentFilter  = 'Semua';
+let histFilter     = 'Semua';
+let allRecords     = [];
+let allDevices     = [];
+let currentType    = 'PM';
+let currentStatus  = 'selesai';
+let currentPrio    = 'normal';
+let screenStack    = [];
+let videoStream    = null;
+let qrScanner      = null;
+let flashOn        = false;
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', async () => {
+  setDate();
+  session = loadSession();
+  if (session) {
+    baseId = session.baseId;
+    tables = session.tables;
+    showScreen('home');
+    loadHomeData();
+  }
+});
+
+function setDate() {
+  const el = document.getElementById('home-date');
+  if (el) el.textContent = new Date().toLocaleDateString('id-ID',
+    { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+}
+
+// ── PASSWORD VERIFICATION ──
+// Support: sha256iter (HTTP) dan pbkdf2 (HTTPS)
+async function sha256(message) {
+  if (crypto.subtle) {
+    const enc = new TextEncoder();
+    const buf = await crypto.subtle.digest('SHA-256', enc.encode(message));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+  return sha256Manual(message);
+}
+
+function sha256Manual(str) {
+  function rightRotate(value, amount) {
+    return (value >>> amount) | (value << (32 - amount));
+  }
+  const mathPow = Math.pow, maxWord = mathPow(2,32);
+  let result = '', words = [];
+  const asciiBitLength = str.length * 8;
+  let hash = sha256Manual.h = sha256Manual.h || [];
+  let k    = sha256Manual.k = sha256Manual.k || [];
+  let primeCounter = k.length;
+  const isComposite = {};
+  for (let candidate = 2; primeCounter < 64; candidate++) {
+    if (!isComposite[candidate]) {
+      for (let i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+      hash[primeCounter] = (mathPow(candidate,.5)*maxWord)|0;
+      k[primeCounter++]  = (mathPow(candidate,1/3)*maxWord)|0;
+    }
+  }
+  str += '\x80';
+  while (str.length % 64 - 56) str += '\x00';
+  for (let i = 0; i < str.length; i++) {
+    const j = str.charCodeAt(i);
+    if (j >> 8) return '';
+    words[i >> 2] |= j << ((3 - i) % 4) * 8;
+  }
+  words[words.length] = ((asciiBitLength/maxWord)|0);
+  words[words.length] = (asciiBitLength|0);
+  for (let j = 0; j < words.length;) {
+    const w = words.slice(j, j += 16), oldHash = hash.slice(0);
+    for (let i = 0; i < 64; i++) {
+      const w15 = w[i-15], w2 = w[i-2], a = hash[0], e = hash[4];
+      const temp1 = hash[7]+(rightRotate(e,6)^rightRotate(e,11)^rightRotate(e,25))+((e&hash[5])^(~e&hash[6]))+k[i]+(w[i]=(i<16)?w[i]:(w[i-16]+(rightRotate(w15,7)^rightRotate(w15,18)^(w15>>>3))+w[i-7]+(rightRotate(w2,17)^rightRotate(w2,19)^(w2>>>10)))|0);
+      const temp2 = (rightRotate(a,2)^rightRotate(a,13)^rightRotate(a,22))+((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
+      hash = [(temp1+temp2)|0].concat(hash); hash[4]=(hash[4]+temp1)|0; hash.length=8;
+    }
+    for (let i = 0; i < 8; i++) hash[i]=(hash[i]+oldHash[i])|0;
+  }
+  for (let i = 0; i < 8; i++) for (let j = 3; j+1; j--) { const b=(hash[i]>>(j*8))&255; result+=((b<16)?0:'')+b.toString(16); }
+  return result;
+}
+
+async function verifyPassword(password, storedHash) {
+  try {
+    const parts = storedHash.split('$');
+    if (parts.length !== 3) return false;
+    const [methodPart, salt, expectedHex] = parts;
+
+    // Format sha256iter (HTTP-safe)
+    if (methodPart.startsWith('sha256iter:')) {
+      const ITER = parseInt(methodPart.split(':')[1]) || 10000;
+      let current = password + ':' + salt;
+      for (let i = 0; i < ITER; i++) {
+        current = await sha256(current + password + salt + i);
+      }
+      return current === expectedHex;
+    }
+
+    // Format pbkdf2 (HTTPS only)
+    if (methodPart.startsWith('pbkdf2:') && crypto.subtle) {
+      const iterations = parseInt(methodPart.split(':')[2]) || 1000000;
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey('raw', enc.encode(password), { name:'PBKDF2' }, false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', hash:'SHA-256', salt:enc.encode(salt), iterations }, key, 256);
+      const hex  = Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2,'0')).join('');
+      return hex === expectedHex;
+    }
+
+    return false;
+  } catch(e) {
+    console.error('verifyPassword error:', e);
+    return false;
+  }
+}
+
+// ── SESSION ──
+function saveSession(data) {
+  localStorage.setItem('hd_session', JSON.stringify(data));
+}
+function loadSession() {
+  try { return JSON.parse(localStorage.getItem('hd_session')); }
+  catch { return null; }
+}
+function clearSession() { localStorage.removeItem('hd_session'); }
+
+// ── TOAST ──
+function toast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = isError ? 'error show' : 'show';
+  setTimeout(() => t.className = isError ? 'error' : '', 2800);
+}
+
+// ── SCREEN NAV ──
+function showScreen(id, pushHistory = true) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active', 'slide-left');
+  });
+  if (pushHistory && screenStack[screenStack.length - 1] !== id) {
+    screenStack.push(id);
+  }
+  document.getElementById('screen-' + id)?.classList.add('active');
+}
+
+function goBack() {
+  screenStack.pop();
+  const prev = screenStack[screenStack.length - 1] || 'login';
+  if (prev === 'scan') stopCamera();
+  showScreen(prev, false);
+}
+
+function navTo(tab) {
+  if (tab === 'home') {
+    screenStack = ['home'];
+    showScreen('home', false);
+    loadHomeData();
+  } else if (tab === 'history') {
+    screenStack = ['home', 'history'];
+    showScreen('history', false);
+    loadAllHistory();
+  } else if (tab === 'devices') {
+    screenStack = ['home', 'devices'];
+    showScreen('devices', false);
+    loadDevices();
+  }
+}
+
+// ── API HELPER ──
+async function api(path, opts = {}) {
+  const res = await fetch(CFG.BASE + path, {
+    headers: H, ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  return res.json();
+}
+
+// ── LOGIN ──
+function togglePwd() {
+  const i = document.getElementById('inp-pwd');
+  i.type = i.type === 'password' ? 'text' : 'password';
+}
+
+async function doLogin() {
+  const email = document.getElementById('inp-email').value.trim();
+  const pwd   = document.getElementById('inp-pwd').value.trim();
+  if (!email || !pwd) { toast('Email dan password wajib diisi', true); return; }
+
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true; btn.textContent = 'Menghubungkan...';
+
+  try {
+    // 1. Ambil daftar base
+    const basesData = await api('/api/v1/db/meta/projects/');
+    const bases = basesData?.list || [];
+    const hBase = bases.find(b => b.title?.toLowerCase().includes('historia'));
+    if (!hBase) throw new Error('Base Historia_danet tidak ditemukan di server');
+    baseId = hBase.id;
+
+    // 2. Ambil tabel
+    const tablesData = await api(`/api/v1/db/meta/projects/${baseId}/tables`);
+    const tList = tablesData?.list || [];
+    tList.forEach(t => { tables[t.title] = t.id; });
+
+    // 3. Query user
+    const userTableId = Object.entries(tables).find(([k]) => k.includes('users'))?.[1];
+    if (!userTableId) throw new Error('Tabel users tidak ditemukan');
+
+    const userData = await api(
+      `/api/v1/db/data/noco/${baseId}/${userTableId}?where=(email,eq,${encodeURIComponent(email)})&limit=1`
+    );
+    const users = userData?.list || [];
+    if (users.length === 0) throw new Error('Email tidak terdaftar');
+
+    const user = users[0];
+
+    // 4. Verifikasi password
+    const storedHash = user.password_hash || user.Password_hash || '';
+    if (!storedHash) throw new Error('Password belum diset. Hubungi administrator.');
+
+    const passwordValid = await verifyPassword(pwd, storedHash);
+    if (!passwordValid) throw new Error('Password salah');
+
+    // Cek status aktif
+    const isActive = user.is_active === true || user.is_active === 'true' || user.is_active === 1;
+    if (!isActive) throw new Error('Akun Anda tidak aktif. Hubungi administrator.');
+
+    session = { ...user, baseId, tables };
+    saveSession(session);
+
+    showScreen('home');
+    loadHomeData();
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'MASUK';
+  }
+}
+
+function doLogout() {
+  clearSession(); session = null;
+  screenStack = [];
+  showScreen('login', false);
+}
+
+// ── HOME DATA ──
+async function loadHomeData() {
+  if (!session) return;
+
+  // Avatar & greeting
+  const name = session.name || session.Name || 'Operator';
+  const role = session.role || session.Role || '';
+  document.getElementById('home-avatar').textContent = name.charAt(0).toUpperCase();
+  document.getElementById('home-greeting').innerHTML = `Halo, <strong>${name}</strong> 👋`;
+
+  // Tampilkan menu Perangkat hanya untuk admin
+  const devNav = document.getElementById('nav-devices');
+  if (devNav) devNav.style.display = role === 'admin' ? 'flex' : 'none';
+
+  // Update bottom nav grid jika admin (4 item)
+  const bottomNav = document.getElementById('home-bottom-nav');
+  if (bottomNav && role === 'admin') {
+    bottomNav.style.gridTemplateColumns = 'repeat(4,1fr)';
+  }
+
+  // Stats
+  try {
+    const recId = getTableId('maintenance_rec') || getTableId('03_maintenance');
+    if (!recId) return;
+
+    const now = new Date();
+    const ym  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+
+    const [pmD, cmD, recD] = await Promise.all([
+      api(`/api/v1/db/data/noco/${baseId}/${recId}?where=(type,eq,PM)~and(work_date,gte,${ym})&limit=1`),
+      api(`/api/v1/db/data/noco/${baseId}/${recId}?where=(type,eq,CM)~and(work_date,gte,${ym})&limit=1`),
+      api(`/api/v1/db/data/noco/${baseId}/${recId}?limit=6&sort=-created_at`),
+    ]);
+
+    document.getElementById('stat-pm').textContent = pmD?.pageInfo?.totalRows ?? 0;
+    document.getElementById('stat-cm').textContent = cmD?.pageInfo?.totalRows ?? 0;
+
+    const recent = recD?.list || [];
+    const recEl  = document.getElementById('home-recent');
+
+    if (recent.length === 0) {
+      recEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Belum ada aktivitas</div></div>`;
+    } else {
+      recEl.innerHTML = recent.map(r => `
+        <div class="act-item ${r.type?.toLowerCase()}">
+          <div class="act-info">
+            <div class="act-name">${r.title || '-'}</div>
+            <div class="act-sub">${r.device_id || '-'} · ${fmtDate(r.work_date)}</div>
+          </div>
+          <div class="badge badge-${r.type?.toLowerCase()}">${r.type}</div>
+        </div>
+      `).join('');
+    }
+  } catch(e) {
+    console.error('loadHomeData:', e);
+  }
+}
+
+// ── TABLE ID HELPER ──
+function getTableId(keyword) {
+  const entry = Object.entries(tables).find(([k]) => k.toLowerCase().includes(keyword.toLowerCase()));
+  return entry?.[1] || null;
+}
+
+// ── SCAN QR ──
+function gotoScan() {
+  screenStack = [...screenStack.filter(s => s !== 'scan'), 'scan'];
+  showScreen('scan', false);
+  // Tutup manual panel dulu, mulai dengan kamera
+  document.getElementById('manual-panel').classList.remove('show');
+  startCamera();
+  loadQuickDevices();
+}
+
+async function startCamera() {
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const vid = document.getElementById('qr-video');
+    vid.srcObject = videoStream;
+    await vid.play();
+
+    document.getElementById('scan-status').innerHTML =
+      '<div class="scan-pulse"></div><span>Memuat scanner...</span>';
+
+    // Cek BarcodeDetector API (native Chrome Android)
+    if ('BarcodeDetector' in window) {
+      document.getElementById('scan-status').innerHTML =
+        '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
+      startQRScanNative();
+    } else {
+      // Fallback: load jsQR dari CDN
+      if (!window.jsQR) {
+        try {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js';
+            s.onload  = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        } catch {
+          // CDN gagal, coba unpkg
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js';
+            s.onload  = resolve;
+            s.onerror = () => { resolve(); }; // lanjut walau gagal
+            document.head.appendChild(s);
+          });
+        }
+      }
+      if (window.jsQR) {
+        document.getElementById('scan-status').innerHTML =
+          '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
+        startQRScanCanvas();
+      } else {
+        document.getElementById('scan-status').innerHTML =
+          '<span style="color:#F39C12">⚠ Scanner tidak tersedia, gunakan manual</span>';
+        setTimeout(() => openManual(), 1000);
+      }
+    }
+  } catch(e) {
+    document.getElementById('scan-status').innerHTML =
+      '<span style="color:#F39C12">⚠ Kamera tidak tersedia</span>';
+    setTimeout(() => openManual(), 800);
+  }
+}
+
+// ── Metode 1: BarcodeDetector API (native Chrome Android ≥ v83) ──
+function startQRScanNative() {
+  const vid      = document.getElementById('qr-video');
+  const detector = new BarcodeDetector({ formats: ['qr_code'] });
+
+  async function tick() {
+    if (!videoStream) return;
+    if (vid.readyState >= vid.HAVE_ENOUGH_DATA && vid.videoWidth > 0) {
+      try {
+        const codes = await detector.detect(vid);
+        if (codes.length > 0 && codes[0].rawValue) {
+          const result = codes[0].rawValue;
+          document.getElementById('scan-status').innerHTML =
+            '<div class="scan-pulse" style="background:var(--pm)"></div>' +
+            '<span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
+          stopCamera();
+          findDevice(result);
+          return;
+        }
+      } catch(e) { /* lanjut */ }
+    }
+    qrScanner = setTimeout(tick, 300);
+  }
+  tick();
+}
+
+// ── Metode 2: jsQR via canvas ──
+function startQRScanCanvas() {
+  const vid    = document.getElementById('qr-video');
+  const canvas = document.createElement('canvas');
+  const ctx    = canvas.getContext('2d', { willReadFrequently: true });
+  let   last   = 0;
+
+  function tick() {
+    if (!videoStream) return;
+    const now = Date.now();
+    if (now - last >= 250 && vid.readyState >= vid.HAVE_ENOUGH_DATA && vid.videoWidth > 0) {
+      last = now;
+      canvas.width  = vid.videoWidth;
+      canvas.height = vid.videoHeight;
+      ctx.drawImage(vid, 0, 0);
+      try {
+        const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+        if (code && code.data) {
+          document.getElementById('scan-status').innerHTML =
+            '<div class="scan-pulse" style="background:var(--pm)"></div>' +
+            '<span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
+          stopCamera();
+          cancelAnimationFrame(qrScanner);
+          findDevice(code.data);
+          return;
+        }
+      } catch(e) { /* lanjut */ }
+    }
+    qrScanner = requestAnimationFrame(tick);
+  }
+  qrScanner = requestAnimationFrame(tick);
+}
+
+// Alias untuk backward compatibility
+function startQRScan() { startQRScanCanvas(); }
+
+function stopCamera() {
+  if (qrScanner) {
+    cancelAnimationFrame(qrScanner);
+    clearTimeout(qrScanner);
+    qrScanner = null;
+  }
+  if (videoStream) {
+    videoStream.getTracks().forEach(t => t.stop());
+    videoStream = null;
+  }
+}
+
+function toggleFlash() {
+  if (!videoStream) return;
+  const track = videoStream.getVideoTracks()[0];
+  if (track.getCapabilities()?.torch) {
+    flashOn = !flashOn;
+    track.applyConstraints({ advanced: [{ torch: flashOn }] });
+    const icon = document.getElementById('flash-icon');
+    icon.classList.toggle('on', flashOn);
+    icon.textContent = flashOn ? '🔦' : '💡';
+  } else {
+    toast('Flash tidak tersedia di perangkat ini', true);
+  }
+}
+
+function openManual() {
+  const panel = document.getElementById('manual-panel');
+  panel.classList.add('show');
+  document.getElementById('inp-code').focus();
+  loadQuickDevices();
+}
+
+function closeManual() {
+  const panel = document.getElementById('manual-panel');
+  panel.classList.remove('show');
+}
+
+function toggleManual() {
+  const panel = document.getElementById('manual-panel');
+  if (panel.classList.contains('show')) closeManual();
+  else openManual();
+}
+
+async function loadQuickDevices() {
+  const devId = getTableId('devices') || getTableId('02_devices');
+  if (!devId) return;
+  try {
+    const data = await api(`/api/v1/db/data/noco/${baseId}/${devId}?limit=10&sort=device_code`);
+    allDevices = data?.list || [];
+    const el = document.getElementById('quick-devices');
+    el.innerHTML = allDevices.map(d => `
+      <div onclick="findDevice('${d.device_code}')" style="
+        display:flex;justify-content:space-between;align-items:center;
+        background:var(--bg-card);border:1px solid var(--border);
+        border-radius:10px;padding:10px 14px;cursor:pointer;">
+        <span style="font-size:13px;font-weight:600;color:var(--accent);letter-spacing:1px;">${d.device_code}</span>
+        <span style="font-size:11px;color:var(--text-2);">${d.name}</span>
+        <span style="color:var(--text-3);">›</span>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+function searchByCode() {
+  const code = document.getElementById('inp-code').value.trim().toUpperCase();
+  if (!code) { toast('Masukkan kode perangkat', true); return; }
+  findDevice(code);
+}
+
+async function findDevice(code) {
+  const devId = getTableId('devices') || getTableId('02_devices');
+  if (!devId) { toast('Tabel devices tidak ditemukan', true); return; }
+
+  toast('🔍 Mencari perangkat...');
+  try {
+    const data = await api(
+      `/api/v1/db/data/noco/${baseId}/${devId}?where=(device_code,eq,${encodeURIComponent(code)})&limit=1`
+    );
+    const list = data?.list || [];
+    if (list.length === 0) {
+      toast(`Perangkat "${code}" tidak ditemukan`, true);
+      return;
+    }
+    currentDevice = list[0];
+    openDeviceHistory(currentDevice);
+  } catch(e) {
+    toast('Gagal mencari perangkat: ' + e.message, true);
+  }
+}
+
+// ── DEVICE HISTORY ──
+function openDeviceHistory(dev) {
+  stopCamera();
+  closeManual();
+
+  document.getElementById('dev-name').textContent   = dev.name || '-';
+  document.getElementById('dev-code').textContent   = dev.device_code || '-';
+  document.getElementById('dev-loc').textContent    = `📍 ${dev.location || ''}${dev.area ? ' · ' + dev.area : ''}`;
+
+  const st = (dev.status || 'aktif').toLowerCase();
+  const pill = document.getElementById('dev-status');
+  pill.textContent = (dev.status || 'aktif').toUpperCase();
+  pill.className = st === 'aktif' ? 'pill pill-green' : 'pill pill-orange';
+
+  currentFilter = 'Semua';
+  // Reset filter UI
+  document.querySelectorAll('#filter-bar .filter-tab').forEach((t,i) => {
+    t.className = i===0 ? 'filter-tab f-all' : 'filter-tab';
+  });
+
+  screenStack.push('device');
+  showScreen('device', false);
+  loadDeviceRecords();
+}
+
+async function loadDeviceRecords() {
+  const recId = getTableId('maintenance_rec') || getTableId('03_maintenance');
+  const el    = document.getElementById('device-records');
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
+
+  try {
+    const devId = currentDevice.id || currentDevice.Id;
+    let where = `(device_id,eq,${devId})`;
+    if (currentFilter !== 'Semua') where += `~and(type,eq,${currentFilter})`;
+
+    const data = await api(
+      `/api/v1/db/data/noco/${baseId}/${recId}?where=${encodeURIComponent(where)}&sort=-work_date&limit=50`
+    );
+    const recs = data?.list || [];
+
+    document.getElementById('rec-count').textContent = `${recs.length} record`;
+
+    if (recs.length === 0) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">Belum Ada Record</div>
+        <div class="empty-text">Tambahkan record PM atau CM pertama</div>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = recs.map(r => buildRecCard(r)).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">${e.message}</div></div>`;
+  }
+}
+
+function buildRecCard(r) {
+  const t = (r.type || 'PM').toLowerCase();
+  const statusColors = { selesai:'var(--pm)', 'dalam proses':'var(--accent)', ditunda:'var(--cm)', dibatalkan:'var(--danger)' };
+  const sc = statusColors[r.status] || 'var(--text-3)';
+  return `
+    <div class="rec-item ${t}">
+      <div class="rec-top">
+        <div class="rec-title">${r.title || '-'}</div>
+        <div class="badge badge-${t}">${r.type}</div>
+      </div>
+      <div class="rec-meta">
+        <div class="meta-item">
+          <div class="meta-label">TANGGAL</div>
+          <div class="meta-val">${fmtDate(r.work_date)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">TEKNISI</div>
+          <div class="meta-val">${r.technician_name || '-'}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">DURASI</div>
+          <div class="meta-val">${r.duration_hours ? r.duration_hours + ' jam' : '-'}</div>
+        </div>
+      </div>
+      ${r.findings ? `<div class="findings-box"><div class="findings-label">Temuan:</div><div class="findings-text">${r.findings}</div></div>` : ''}
+      <div class="rec-bottom">
+        <div class="status-dot" style="background:${sc}"></div>
+        <span style="font-size:11px;color:${sc};font-weight:500;">${r.status || 'selesai'}</span>
+        ${r.next_schedule && r.type==='PM' ? `<span style="font-size:10px;color:var(--text-3)"> · PM berikutnya: ${fmtDate(r.next_schedule)}</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('#filter-bar .filter-tab').forEach(t => {
+    t.className = 'filter-tab';
+  });
+  el.className = f === 'Semua' ? 'filter-tab f-all' : f === 'PM' ? 'filter-tab f-pm' : 'filter-tab f-cm';
+  loadDeviceRecords();
+}
+
+// ── ALL HISTORY ──
+async function loadAllHistory() {
+  const recId = getTableId('maintenance_rec') || getTableId('03_maintenance');
+  const el = document.getElementById('hist-list');
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
+
+  try {
+    let where = histFilter !== 'Semua' ? `?where=${encodeURIComponent(`(type,eq,${histFilter})`)}&` : '?';
+    const data = await api(`/api/v1/db/data/noco/${baseId}/${recId}${where}sort=-work_date&limit=100`);
+    allRecords = data?.list || [];
+
+    document.getElementById('hist-count').textContent = `${allRecords.length} record`;
+
+    if (allRecords.length === 0) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Belum Ada Data</div></div>`;
+      return;
+    }
+    el.innerHTML = allRecords.map(r => buildRecCard(r)).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">${e.message}</div></div>`;
+  }
+}
+
+function setHistFilter(f, el) {
+  histFilter = f;
+  document.querySelectorAll('#screen-history .filter-tab').forEach(t => t.className='filter-tab');
+  el.className = f==='Semua' ? 'filter-tab f-all' : f==='PM' ? 'filter-tab f-pm' : 'filter-tab f-cm';
+  loadAllHistory();
+}
+
+// ── ADD RECORD ──
+function gotoAddRecord() {
+  if (!currentDevice) return;
+  document.getElementById('add-dev-name').textContent = currentDevice.name;
+  document.getElementById('add-dev-code').textContent = currentDevice.device_code;
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f-title').value  = '';
+  document.getElementById('f-tech').value   = '';
+  document.getElementById('f-dur').value    = '';
+  document.getElementById('f-desc').value   = '';
+  document.getElementById('f-findings').value = '';
+  document.getElementById('f-action').value = '';
+  document.getElementById('f-recom').value  = '';
+  document.getElementById('f-cost').value   = '0';
+  currentType   = 'PM';
+  currentStatus = 'selesai';
+  currentPrio   = 'normal';
+  selectType('PM');
+  screenStack.push('add');
+  showScreen('add', false);
+}
+
+function selectType(t) {
+  currentType = t;
+  document.getElementById('opt-pm').className = t==='PM' ? 'type-opt sel-pm' : 'type-opt';
+  document.getElementById('opt-cm').className = t==='CM' ? 'type-opt sel-cm' : 'type-opt';
+  document.getElementById('btn-save').textContent = `✓  SIMPAN RECORD ${t}`;
+  document.getElementById('btn-save').className = `btn btn-${t.toLowerCase()}`;
+  document.getElementById('wrap-next-sched').style.display = t==='PM' ? 'flex' : 'none';
+}
+
+function selStatus(el) {
+  currentStatus = el.dataset.status;
+  document.querySelectorAll('[data-status]').forEach(c => c.className='chip');
+  el.className='chip active-accent';
+}
+
+function selPrio(el) {
+  currentPrio = el.dataset.prio;
+  const colors = { rendah:'', normal:'active-accent', tinggi:'active-cm', kritis:'active-danger' };
+  document.querySelectorAll('[data-prio]').forEach(c => c.className='chip');
+  el.className = `chip ${colors[currentPrio]}`;
+}
+
+async function saveRecord() {
+  const title = document.getElementById('f-title').value.trim();
+  const date  = document.getElementById('f-date').value;
+  const tech  = document.getElementById('f-tech').value.trim();
+  if (!title) { toast('Judul pekerjaan wajib diisi', true); return; }
+  if (!date)  { toast('Tanggal pelaksanaan wajib diisi', true); return; }
+  if (!tech)  { toast('Nama teknisi wajib diisi', true); return; }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+  try {
+    const recId = getTableId('maintenance_rec') || getTableId('03_maintenance');
+    const devId = currentDevice.id || currentDevice.Id;
+
+    const payload = {
+      device_id:       devId,
+      type:            currentType,
+      title,
+      description:     document.getElementById('f-desc').value.trim(),
+      work_date:       date,
+      start_time:      document.getElementById('f-start').value || null,
+      end_time:        document.getElementById('f-end').value || null,
+      duration_hours:  parseFloat(document.getElementById('f-dur').value) || null,
+      technician_name: tech,
+      status:          currentStatus,
+      priority:        currentPrio,
+      next_schedule:   currentType==='PM' ? (document.getElementById('f-next').value || null) : null,
+      findings:        document.getElementById('f-findings').value.trim(),
+      action_taken:    document.getElementById('f-action').value.trim(),
+      recommendation:  document.getElementById('f-recom').value.trim(),
+      cost:            parseFloat(document.getElementById('f-cost').value) || 0,
+      created_by:      session?.id || session?.Id || null,
+    };
+
+    await api(`/api/v1/db/data/noco/${baseId}/${recId}`, {
+      method: 'POST', body: payload
+    });
+
+    toast(`✓ Record ${currentType} berhasil disimpan`);
+    setTimeout(() => { goBack(); loadDeviceRecords(); }, 1000);
+  } catch(e) {
+    toast('Gagal menyimpan: ' + e.message, true);
+  } finally {
+    btn.disabled = false;
+    selectType(currentType);
+  }
+}
+
+// ── DEVICE MANAGEMENT (ADMIN) ──────────────────────
+let allDevicesList = [];
+
+async function loadDevices() {
+  const devId = getTableId('devices') || getTableId('02_devices');
+  const el    = document.getElementById('devices-list');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
+
+  try {
+    const data = await api(`/api/v1/db/data/noco/${baseId}/${devId}?limit=100&sort=device_code`);
+    allDevicesList = data?.list || [];
+    document.getElementById('dev-count-top').textContent = `${allDevicesList.length} perangkat`;
+    renderDevices(allDevicesList);
+  } catch(e) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">${e.message}</div></div>`;
+  }
+}
+
+function renderDevices(list) {
+  const el = document.getElementById('devices-list');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚙️</div>
+      <div class="empty-title">Belum Ada Perangkat</div>
+      <div class="empty-text">Tap tombol Tambah untuk mendaftarkan perangkat baru</div>
+    </div>`; return;
+  }
+
+  const statusColor = { aktif:'var(--pm)', 'non-aktif':'var(--text-3)', rusak:'var(--danger)', maintenance:'var(--cm)' };
+  const statusBg    = { aktif:'var(--pm-dim)', 'non-aktif':'var(--border)', rusak:'var(--red-d)', maintenance:'var(--cm-dim)' };
+
+  el.innerHTML = list.map(d => {
+    const st  = (d.status || 'aktif').toLowerCase();
+    const sc  = statusColor[st]  || 'var(--text-2)';
+    const sbg = statusBg[st]     || 'var(--border)';
+    const id  = d.Id || d.id;
+    return `
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;gap:12px;align-items:flex-start;">
+      <div style="width:44px;height:44px;background:#1A3A5C;border:1.5px solid var(--border-b);
+        border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">⚙️</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(d.name||'-')}</div>
+        <div style="font-size:10px;color:var(--accent);letter-spacing:1px;margin-top:2px;">${esc(d.device_code||'-')}</div>
+        <div style="font-size:11px;color:var(--text-2);margin-top:3px;">📍 ${esc(d.location||'-')}${d.area?' · '+esc(d.area):''}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;
+            background:${sbg};color:${sc};">● ${st.toUpperCase()}</span>
+          <span style="font-size:10px;color:var(--text-3);">${esc(d.category||'')}</span>
+          ${d.brand ? `<span style="font-size:10px;color:var(--text-3);">${esc(d.brand)}</span>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+        <button onclick="openEditDevice('${id}')"
+          style="padding:6px 12px;background:none;border:1px solid var(--border);border-radius:7px;
+                 color:var(--text-2);font-size:11px;font-weight:600;cursor:pointer;">✏️ Edit</button>
+        <button onclick="showQRDevice('${id}')"
+          style="padding:6px 12px;background:rgba(45,204,112,.15);border:1px solid var(--pm);border-radius:7px;
+                 color:var(--pm);font-size:11px;font-weight:600;cursor:pointer;">🔳 QR Code</button>
+        <button onclick="openDeviceHistoryFromList('${id}')"
+          style="padding:6px 12px;background:var(--accent-glow);border:1px solid var(--accent);border-radius:7px;
+                 color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;">📋 History</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterDevices(kw) {
+  const q = kw.toLowerCase();
+  const filtered = allDevicesList.filter(d =>
+    (d.name||'').toLowerCase().includes(q) ||
+    (d.device_code||'').toLowerCase().includes(q) ||
+    (d.location||'').toLowerCase().includes(q) ||
+    (d.category||'').toLowerCase().includes(q)
+  );
+  renderDevices(filtered);
+}
+
+function openAddDevice() {
+  document.getElementById('dev-edit-id').value = '';
+  document.getElementById('modal-dev-title').textContent = '➕ Tambah Perangkat';
+  document.getElementById('btn-save-device').textContent = '✓  SIMPAN PERANGKAT';
+  document.getElementById('btn-save-device').style.display = 'block';
+  // Reset form
+  ['dev-f-code','dev-f-name','dev-f-loc','dev-f-area','dev-f-brand','dev-f-model','dev-f-serial','dev-f-notes'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  document.getElementById('dev-f-cat').value    = 'Data Network';
+  document.getElementById('dev-f-status').value = 'aktif';
+  document.getElementById('dev-f-install').value   = '';
+  document.getElementById('dev-f-warranty').value  = '';
+  document.getElementById('modal-device').style.display = 'flex';
+}
+
+function openEditDevice(id) {
+  const dev = allDevicesList.find(d => String(d.Id||d.id) === String(id));
+  if (!dev) return;
+  document.getElementById('dev-edit-id').value      = id;
+  document.getElementById('modal-dev-title').textContent = '✏️ Edit Perangkat';
+  document.getElementById('btn-save-device').textContent = '✓  SIMPAN PERUBAHAN';
+  document.getElementById('dev-f-code').value    = dev.device_code || '';
+  document.getElementById('dev-f-name').value    = dev.name || '';
+  document.getElementById('dev-f-loc').value     = dev.location || '';
+  document.getElementById('dev-f-area').value    = dev.area || '';
+  document.getElementById('dev-f-brand').value   = dev.brand || '';
+  document.getElementById('dev-f-model').value   = dev.model || '';
+  document.getElementById('dev-f-serial').value  = dev.serial_number || '';
+  document.getElementById('dev-f-notes').value   = dev.notes || '';
+  document.getElementById('dev-f-cat').value     = dev.category || 'Lainnya';
+  document.getElementById('dev-f-status').value  = dev.status || 'aktif';
+  document.getElementById('dev-f-install').value    = dev.install_date || '';
+  document.getElementById('dev-f-warranty').value   = dev.warranty_expiry || '';
+  document.getElementById('modal-device').style.display = 'flex';
+}
+
+function closeDeviceModal() {
+  document.getElementById('modal-device').style.display = 'none';
+}
+
+async function saveDevice() {
+  const editId = document.getElementById('dev-edit-id').value;
+  const code   = document.getElementById('dev-f-code').value.trim().toUpperCase();
+  const name   = document.getElementById('dev-f-name').value.trim();
+  const loc    = document.getElementById('dev-f-loc').value.trim();
+
+  if (!code) { toast('Kode perangkat wajib diisi', true); return; }
+  if (!name) { toast('Nama perangkat wajib diisi', true); return; }
+  if (!loc)  { toast('Lokasi wajib diisi', true); return; }
+
+  const btn = document.getElementById('btn-save-device');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+  try {
+    const devTableId = getTableId('devices') || getTableId('02_devices');
+
+    // Helper: pastikan format tanggal YYYY-MM-DD
+    const fmtInputDate = (val) => {
+      if (!val) return null;
+      // Jika sudah YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.substring(0,10);
+      // Jika DD/MM/YYYY
+      if (/^\d{2}\/\d{2}\/\d{4}/.test(val)) {
+        const [d,m,y] = val.split('/');
+        return `${y}-${m}-${d}`;
+      }
+      return val;
+    };
+
+    const payload = {
+      device_code:     code,
+      name,
+      category:        document.getElementById('dev-f-cat').value,
+      location:        loc,
+      area:            document.getElementById('dev-f-area').value.trim() || null,
+      brand:           document.getElementById('dev-f-brand').value.trim() || null,
+      model:           document.getElementById('dev-f-model').value.trim() || null,
+      serial_number:   document.getElementById('dev-f-serial').value.trim() || null,
+      status:          document.getElementById('dev-f-status').value,
+      install_date:    fmtInputDate(document.getElementById('dev-f-install').value) || null,
+      warranty_expiry: fmtInputDate(document.getElementById('dev-f-warranty').value) || null,
+      notes:           document.getElementById('dev-f-notes').value.trim() || null,
+      updated_at:      new Date().toISOString().substring(0,19).replace('T',' '),
+    };
+
+    if (editId) {
+      // Edit existing
+      const res = await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devTableId}/${editId}`, {
+        method: 'PATCH',
+        headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`API ${res.status}: ${errBody}`);
+      }
+      toast(`✓ Perangkat "${name}" berhasil diperbarui`);
+      closeDeviceModal();
+      setTimeout(() => loadDevices(), 800);
+    } else {
+      // Add new
+      payload.created_at = new Date().toISOString().substring(0,19).replace('T',' ');
+      payload.created_by = session?.id || null;
+
+      const res = await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devTableId}`, {
+        method: 'POST',
+        headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error('Error body:', errBody);
+        throw new Error(`API ${res.status}: ${errBody}`);
+      }
+      const newDev = await res.json();
+      const newId  = newDev?.Id || newDev?.id;
+      toast(`✓ Perangkat "${name}" berhasil ditambahkan`);
+
+      // Tutup modal device dulu
+      closeDeviceModal();
+      setTimeout(() => loadDevices(), 800);
+
+      // Tampilkan QR di modal QR
+      setTimeout(async () => {
+        document.getElementById('qr-modal-title').textContent      = '🔳 QR Code Perangkat Baru';
+        document.getElementById('qr-modal-device-name').textContent = name;
+        document.getElementById('qr-modal-code').textContent        = code;
+        document.getElementById('modal-qr').style.display           = 'flex';
+        const dataUrl = await generateQRToCanvas('qr-modal-canvas', code, 200);
+        if (newId && dataUrl) await saveQRToDatabase(newId, code, dataUrl);
+      }, 400);
+    }
+  } catch(e) {
+    toast('Gagal menyimpan: ' + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editId ? '✓  SIMPAN PERUBAHAN' : '✓  SIMPAN PERANGKAT';
+  }
+}
+
+function openDeviceHistoryFromList(id) {
+  const dev = allDevicesList.find(d => String(d.Id||d.id) === String(id));
+  if (!dev) return;
+  currentDevice = dev;
+  openDeviceHistory(dev);
+}
+
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Close modal on overlay click
+document.getElementById('modal-device')?.addEventListener('click', function(e) {
+  if (e.target === this) closeDeviceModal();
+});
+
+// ── QR CODE GENERATION ─────────────────────────────
+// Pakai library qrcode.js via CDN (pure JS, no canvas API issues)
+
+function loadQRLib() {
+  return new Promise((resolve) => {
+    if (window.QRCode) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = resolve;
+    document.head.appendChild(s);
+  });
+}
+
+// Generate QR ke canvas element
+async function generateQRToCanvas(canvasId, text, size = 180) {
+  await loadQRLib();
+  const canvas = document.getElementById(canvasId);
+  const ctx    = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // QRCode lib pakai div, kita ambil canvas-nya
+  const tempDiv = document.createElement('div');
+  document.body.appendChild(tempDiv);
+
+  return new Promise((resolve) => {
+    new QRCode(tempDiv, {
+      text,
+      width:  size,
+      height: size,
+      colorDark:  '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H,
+    });
+    setTimeout(() => {
+      const qrImg = tempDiv.querySelector('img') || tempDiv.querySelector('canvas');
+      if (qrImg) {
+        const img = new Image();
+        img.onload = () => {
+          canvas.width  = size;
+          canvas.height = size;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, size, size);
+          ctx.drawImage(img, 0, 0, size, size);
+          document.body.removeChild(tempDiv);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.src = qrImg.src || qrImg.toDataURL();
+      } else {
+        document.body.removeChild(tempDiv);
+        resolve(null);
+      }
+    }, 200);
+  });
+}
+
+// Tampilkan QR modal untuk perangkat yang sudah ada
+async function showQRDevice(id) {
+  const dev = allDevicesList.find(d => String(d.Id||d.id) === String(id));
+  if (!dev) return;
+
+  const code = dev.device_code;
+  document.getElementById('modal-qr').style.display       = 'flex';
+  document.getElementById('qr-modal-title').textContent   = 'QR Code Perangkat';
+  document.getElementById('qr-modal-device-name').textContent = dev.name;
+  document.getElementById('qr-modal-code').textContent    = code;
+
+  // Generate QR
+  const dataUrl = await generateQRToCanvas('qr-modal-canvas', code, 200);
+
+  // Simpan ke database jika belum ada qr_code_url
+  if (dataUrl && !dev.qr_code_url) {
+    await saveQRToDatabase(id, code, dataUrl);
+  }
+}
+
+// Simpan QR ke database (kolom qr_code_url)
+async function saveQRToDatabase(devId, code, dataUrl) {
+  try {
+    const devTableId = getTableId('devices') || getTableId('02_devices');
+    await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devTableId}/${devId}`, {
+      method: 'PATCH',
+      headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qr_code_url: `qr:${code}`, updated_at: new Date().toISOString().substring(0,19).replace('T',' ') }),
+    });
+    const idx = allDevicesList.findIndex(d => String(d.Id||d.id) === String(devId));
+    if (idx !== -1) allDevicesList[idx].qr_code_url = `qr:${code}`;
+    toast('✓ QR Code tersimpan di database');
+  } catch(e) {
+    console.log('Save QR error:', e.message);
+  }
+}
+
+// Download QR dari modal viewer
+function downloadQRModal() {
+  const canvas = document.getElementById('qr-modal-canvas');
+  const code   = document.getElementById('qr-modal-code').textContent;
+  const link   = document.createElement('a');
+  link.download = `QR_${code}.png`;
+  link.href     = canvas.toDataURL('image/png');
+  link.click();
+  toast('✓ QR Code berhasil didownload');
+}
+
+// Print QR dari modal
+function printQRModal() {
+  const canvas  = document.getElementById('qr-modal-canvas');
+  const code    = document.getElementById('qr-modal-code').textContent;
+  const name    = document.getElementById('qr-modal-device-name').textContent;
+  const dataUrl = canvas.toDataURL('image/png');
+  const win     = window.open('', '_blank');
+  win.document.write(`
+    <html><head><title>QR - ${code}</title>
+    <style>
+      body { font-family: sans-serif; text-align: center; padding: 40px; }
+      img  { width: 250px; height: 250px; border: 1px solid #eee; padding: 16px; }
+      h2   { font-size: 18px; margin: 16px 0 4px; }
+      p    { font-size: 13px; color: #666; letter-spacing: 2px; }
+      small{ display:block; color:#999; margin-top:8px; font-size:11px; }
+      @media print { button { display: none; } }
+    </style></head>
+    <body>
+      <img src="${dataUrl}">
+      <h2>${name}</h2>
+      <p>${code}</p>
+      <small>Historia Danet · Maintenance Tracker</small>
+      <br><br>
+      <button onclick="window.print()">🖨️ Print</button>
+    </body></html>
+  `);
+  win.document.close();
+}
+
+function closeQRModal() {
+  document.getElementById('modal-qr').style.display = 'none';
+}
+
+// Close QR modal on overlay click
+document.getElementById('modal-qr')?.addEventListener('click', function(e) {
+  if (e.target === this) closeQRModal();
+});
+
+// ── UTILS ──
+function fmtDate(d) {
+  if (!d) return '-';
+  try {
+    return new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+  } catch { return d; }
+}
+
+// Focus ring on inputs
+document.querySelectorAll('.field-input').forEach(wrap => {
+  const inp = wrap.querySelector('input, textarea');
+  if (!inp) return;
+  inp.addEventListener('focus',  () => wrap.classList.add('focused'));
+  inp.addEventListener('blur',   () => wrap.classList.remove('focused'));
+});
+
+// Enter key on login
+document.getElementById('inp-pwd')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html>
