@@ -1,0 +1,28 @@
+{
+  "appId": "id.danet.historiadanet",
+  "appName": "Historia Danet",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#0D1117",
+    "overScrollMode": "never"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0D1117",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "Dark",
+      "backgroundColor": "#161B22"
+    }
+  },
+  "server": {
+    "cleartext": true,
+    "androidScheme": "http"
+  }
+}

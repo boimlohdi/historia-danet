@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Android build outputs (di-generate oleh Capacitor)
+android/
+
+# iOS (tidak dipakai)
+ios/
+
+# Build artifacts
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
