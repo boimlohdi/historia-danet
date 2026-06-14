@@ -40,8 +40,14 @@ jobs:
       - name: Sync web app to Android
         run: npx cap sync android
 
-      - name: Apply AndroidManifest permissions
+      - name: Apply AndroidManifest
         run: cp AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+
+      - name: Apply network security config
+        run: |
+          mkdir -p android/app/src/main/res/xml
+          cp res/xml/network_security_config.xml android/app/src/main/res/xml/network_security_config.xml
+          echo "✅ Network security config applied"
 
       - name: Set Gradle executable
         run: chmod +x android/gradlew
@@ -60,12 +66,11 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: Show APK info
+      - name: APK Info
         run: |
           APK="android/app/build/outputs/apk/debug/app-debug.apk"
           if [ -f "$APK" ]; then
-            echo "✅ Build berhasil!"
-            echo "📦 Size: $(du -sh $APK | cut -f1)"
+            echo "✅ Build berhasil! Size: $(du -sh $APK | cut -f1)"
           else
             echo "❌ APK tidak ditemukan"
             exit 1
