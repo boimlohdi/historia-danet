@@ -691,7 +691,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
   </div>
 
   <!-- Kontrol bawah: Flash + tombol beralih ke manual -->
-  <div class="scan-controls-bar">
+  <div class="scan-controls-bar" id="scan-controls-bar">
     <div class="scan-ctrl" onclick="toggleFlash()">
       <div class="scan-ctrl-icon" id="flash-icon">💡</div>
       <div class="scan-ctrl-label">Flash</div>
@@ -700,6 +700,17 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
       <div class="scan-ctrl-icon">⌨️</div>
       <div class="scan-ctrl-label">Input Manual</div>
     </div>
+  </div>
+
+  <!-- Tombol Android Scanner — muncul di atas controls bar -->
+  <div id="android-scan-bar" style="display:none;padding:12px 16px;background:var(--bg-card);
+    border-top:1px solid var(--border);">
+    <button onclick="startAndroidScan()"
+      style="width:100%;padding:14px;background:var(--accent);color:#001A2E;
+             border:none;border-radius:12px;font-size:15px;font-weight:700;
+             cursor:pointer;letter-spacing:1px;">
+      📸 &nbsp;BUKA SCANNER QR
+    </button>
   </div>
 
   <!-- Manual Panel — muncul sebagai bottom sheet -->
@@ -2420,53 +2431,56 @@ document.getElementById('modal-device')?.addEventListener('click', function(e) {
 
 // ── Android Native QR Scanner ──────────────────────
 function triggerAndroidScan() {
-  // Reset semua state
   window._androidScanActive = false;
   window.onAndroidQRResult  = null;
 
-  // Tampilkan UI scan
-  const statusEl = document.getElementById('scan-status');
-  const cameraEl = document.getElementById('camera-area');
+  // Sembunyikan controls bar biasa, tampilkan tombol scan Android
+  const ctrlBar    = document.getElementById('scan-controls-bar');
+  const androidBar = document.getElementById('android-scan-bar');
+  if (ctrlBar)    ctrlBar.style.display    = 'none';
+  if (androidBar) androidBar.style.display = 'block';
 
-  // Tampilkan tombol scan di tengah
-  cameraEl.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;
-      justify-content:center;height:100%;gap:24px;">
-      <div style="width:200px;height:200px;border:3px solid var(--accent);
-        border-radius:16px;display:flex;align-items:center;justify-content:center;
-        background:rgba(0,194,255,0.05);">
-        <div style="font-size:64px;">📷</div>
-      </div>
-      <button id="btn-android-scan"
-        onclick="startAndroidScan()"
-        style="padding:14px 40px;background:var(--accent);color:#001A2E;
-               border:none;border-radius:12px;font-size:16px;font-weight:700;
-               cursor:pointer;letter-spacing:1px;">
-        📸 &nbsp;BUKA SCANNER
-      </button>
-      <div style="font-size:12px;color:var(--text-2);text-align:center;">
-        Tap tombol untuk scan QR Code perangkat
-      </div>
-    </div>`;
+  // Update camera area jadi placeholder
+  const cameraEl = document.getElementById('camera-area');
+  if (cameraEl) {
+    cameraEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;
+        justify-content:center;height:100%;gap:16px;">
+        <div style="width:180px;height:180px;border:3px solid var(--accent);
+          border-radius:16px;display:flex;align-items:center;justify-content:center;
+          background:rgba(0,194,255,0.05);">
+          <div style="font-size:64px;">📷</div>
+        </div>
+        <div style="font-size:12px;color:var(--text-2);text-align:center;padding:0 32px;">
+          Tap tombol di bawah untuk membuka scanner QR
+        </div>
+      </div>`;
+  }
 }
 
 function startAndroidScan() {
   if (window._androidScanActive) return;
   window._androidScanActive = true;
 
-  document.getElementById('scan-status').innerHTML =
+  const statusEl = document.getElementById('scan-status');
+  if (statusEl) statusEl.innerHTML =
     '<div class="scan-pulse"></div><span>Membuka scanner...</span>';
 
   window.onAndroidQRResult = function(code) {
     window._androidScanActive = false;
-    window.onAndroidQRResult = null;
-    document.getElementById('scan-status').innerHTML =
+    window.onAndroidQRResult  = null;
+    if (statusEl) statusEl.innerHTML =
       '<div class="scan-pulse" style="background:var(--pm)"></div>' +
       '<span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
     setTimeout(() => findDevice(code), 500);
   };
 
-  window.AndroidQR.startScan();
+  try {
+    window.AndroidQR.startScan();
+  } catch(e) {
+    window._androidScanActive = false;
+    toast('Gagal membuka scanner: ' + e.message, true);
+  }
 }
 // Pakai library qrcode.js via CDN (pure JS, no canvas API issues)
 
