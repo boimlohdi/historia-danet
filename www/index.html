@@ -1627,6 +1627,19 @@ async function startCamera() {
     document.getElementById('scan-status').innerHTML =
       '<div class="scan-pulse"></div><span>Memuat scanner...</span>';
 
+    // Cek Android native scanner
+    if (window.AndroidQR) {
+      document.getElementById('scan-status').innerHTML =
+        '<div class="scan-pulse"></div><span>Membuka scanner...</span>';
+      window.onAndroidQRResult = function(code) {
+        document.getElementById('scan-status').innerHTML =
+          '<div class="scan-pulse" style="background:var(--pm)"></div><span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
+        stopCamera();
+        setTimeout(() => findDevice(code), 300);
+      };
+      setTimeout(() => window.AndroidQR.startScan(), 500);
+      return;
+    }
     document.getElementById('scan-status').innerHTML =
       '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
 
