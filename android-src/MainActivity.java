@@ -1,0 +1,82 @@
+name: Build Historia Danet APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor CLI globally
+        run: npm install -g @capacitor/cli@6
+
+      - name: Install dependencies
+        run: npm install --no-package-lock
+
+      - name: Add Android platform
+        run: npx cap add android || echo "Already exists"
+
+      - name: Sync web app to Android
+        run: npx cap sync android
+
+      - name: Apply AndroidManifest
+        run: cp AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+
+      - name: Apply network security config
+        run: |
+          mkdir -p android/app/src/main/res/xml
+          cp res/xml/network_security_config.xml android/app/src/main/res/xml/network_security_config.xml
+
+      - name: Apply custom MainActivity (bypass ngrok warning)
+        run: |
+          mkdir -p android/app/src/main/java/id/danet/historiadanet
+          cp android-src/MainActivity.java android/app/src/main/java/id/danet/historiadanet/MainActivity.java
+          echo "✅ MainActivity applied"
+
+      - name: Set Gradle executable
+        run: chmod +x android/gradlew
+
+      - name: Build Debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          JAVA_HOME: ${{ env.JAVA_HOME }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HistoriaDanet-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: APK Info
+        run: |
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ -f "$APK" ]; then
+            echo "✅ Build berhasil! Size: $(du -sh $APK | cut -f1)"
+          else
+            echo "❌ APK tidak ditemukan"
+            exit 1
+          fi
