@@ -570,7 +570,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
       <button class="btn btn-accent" id="btn-login" onclick="doLogin()">MASUK</button>
 
       <div class="server-info">
-        🔀 Proxy: <strong>172.17.87.135</strong> &nbsp;·&nbsp; 🗄️ DB: <strong>NocoDB via /api/</strong>
+        🔀 Proxy: <strong>ngrok</strong> &nbsp;·&nbsp; 🗄️ DB: <strong>NocoDB via /api/</strong>
       </div>
 
       <div style="text-align:center;font-size:11px;color:var(--text-3)">
@@ -1247,13 +1247,13 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 <script>
 /* ═══════════════════════════════════════════════════════════
    HISTORIA DANET — Web App JavaScript
-   NocoDB API: http://172.17.87.135:8080
+   NocoDB API: via ngrok tunnel
 ═══════════════════════════════════════════════════════════ */
 
 // ── CONFIG ──
 const CFG = {
   // ✅ Satu alamat proxy — HP cukup akses ini saja
-  BASE:  'http://172.17.87.135',        // Nginx Reverse Proxy
+  BASE:  'https://recount-lively-splashed.ngrok-free.dev', // ngrok tunnel
   // Nginx akan forward /api/ → NocoDB secara otomatis
   TOKEN: 'm3C7O-OLFIoNesNDcgYB_UQVDIfbMYLQiNo8-bSB',
   WEB:   'http://172.17.164.100',       // Windows XAMPP (diakses via proxy)
