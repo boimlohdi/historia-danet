@@ -1609,10 +1609,24 @@ function getTableId(keyword) {
 function gotoScan() {
   screenStack = [...screenStack.filter(s => s !== 'scan'), 'scan'];
   showScreen('scan', false);
-  // Tutup manual panel dulu, mulai dengan kamera
   document.getElementById('manual-panel').classList.remove('show');
-  startCamera();
   loadQuickDevices();
+
+  // Jika di Android APK, langsung trigger native scanner tanpa start WebView camera
+  if (window.AndroidQR) {
+    document.getElementById('scan-status').innerHTML =
+      '<div class="scan-pulse"></div><span>Membuka scanner...</span>';
+    window.onAndroidQRResult = function(code) {
+      document.getElementById('scan-status').innerHTML =
+        '<div class="scan-pulse" style="background:var(--pm)"></div>' +
+        '<span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
+      setTimeout(() => findDevice(code), 300);
+    };
+    setTimeout(() => window.AndroidQR.startScan(), 500);
+  } else {
+    // Browser biasa — pakai WebView camera
+    startCamera();
+  }
 }
 
 async function startCamera() {
@@ -1629,15 +1643,17 @@ async function startCamera() {
 
     // Cek Android native scanner
     if (window.AndroidQR) {
+      // Stop WebView camera DULU sebelum buka native scanner
+      stopCamera();
       document.getElementById('scan-status').innerHTML =
         '<div class="scan-pulse"></div><span>Membuka scanner...</span>';
       window.onAndroidQRResult = function(code) {
         document.getElementById('scan-status').innerHTML =
           '<div class="scan-pulse" style="background:var(--pm)"></div><span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
-        stopCamera();
         setTimeout(() => findDevice(code), 300);
       };
-      setTimeout(() => window.AndroidQR.startScan(), 500);
+      // Tunggu kamera WebView benar-benar released
+      setTimeout(() => window.AndroidQR.startScan(), 1500);
       return;
     }
     document.getElementById('scan-status').innerHTML =
