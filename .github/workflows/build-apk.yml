@@ -28,6 +28,24 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Download jsQR and bundle into HTML
+        run: |
+          curl -s https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js -o /tmp/jsqr.min.js
+          JSQR=$(cat /tmp/jsqr.min.js)
+          # Inject jsQR inline ke dalam www/index.html
+          python3 << 'PYEOF'
+          with open('www/index.html', 'r') as f:
+              content = f.read()
+          with open('/tmp/jsqr.min.js', 'r') as f:
+              jsqr = f.read()
+          # Inject sebelum closing </head>
+          inline = f'<script>{jsqr}</script>'
+          content = content.replace('</head>', inline + '\n</head>', 1)
+          with open('www/index.html', 'w') as f:
+              f.write(content)
+          print('jsQR bundled into HTML')
+          PYEOF
+
       - name: Install Capacitor CLI globally
         run: npm install -g @capacitor/cli@6
 
@@ -48,11 +66,10 @@ jobs:
           mkdir -p android/app/src/main/res/xml
           cp res/xml/network_security_config.xml android/app/src/main/res/xml/network_security_config.xml
 
-      - name: Apply custom MainActivity (bypass ngrok warning)
+      - name: Apply custom MainActivity
         run: |
           mkdir -p android/app/src/main/java/id/danet/historiadanet
           cp android-src/MainActivity.java android/app/src/main/java/id/danet/historiadanet/MainActivity.java
-          echo "✅ MainActivity applied"
 
       - name: Set Gradle executable
         run: chmod +x android/gradlew
@@ -74,9 +91,4 @@ jobs:
       - name: APK Info
         run: |
           APK="android/app/build/outputs/apk/debug/app-debug.apk"
-          if [ -f "$APK" ]; then
-            echo "✅ Build berhasil! Size: $(du -sh $APK | cut -f1)"
-          else
-            echo "❌ APK tidak ditemukan"
-            exit 1
-          fi
+          [ -f "$APK" ] && echo "✅ Build berhasil! Size: $(du -sh $APK | cut -f1)" || (echo "❌ APK tidak ditemukan" && exit 1)
