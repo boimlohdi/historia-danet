@@ -1627,18 +1627,22 @@ async function startCamera() {
     document.getElementById('scan-status').innerHTML =
       '<div class="scan-pulse"></div><span>Memuat scanner...</span>';
 
-    // Versi HTTP: pakai BarcodeDetector jika ada, fallback ke inline QR decoder
     document.getElementById('scan-status').innerHTML =
       '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
 
-    if ('BarcodeDetector' in window) {
+    // Deteksi apakah jalan di Capacitor/WebView atau browser biasa
+    const isCapacitor = window.Capacitor !== undefined;
+
+    if (!isCapacitor && 'BarcodeDetector' in window) {
+      // Browser native dengan BarcodeDetector (Chrome Android)
       try {
-        const test = new BarcodeDetector({ formats: ['qr_code'] });
+        new BarcodeDetector({ formats: ['qr_code'] });
         startQRScanNative();
       } catch {
         startQRScanInline();
       }
     } else {
+      // Capacitor WebView atau browser tanpa BarcodeDetector
       startQRScanInline();
     }
   } catch(e) {
@@ -1758,16 +1762,28 @@ function startQRScanInline() {
   // Init BarcodeDetector
   try { window._bd = new BarcodeDetector({ formats: ['qr_code'] }); } catch {}
 
-  // Load jsQR sebagai backup (async, tidak block)
+  // Load jsQR dari multiple sumber
   if (!window.jsQR) {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js';
-    s.onerror = () => {
-      const s2 = document.createElement('script');
-      s2.src = 'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js';
-      document.head.appendChild(s2);
-    };
-    document.head.appendChild(s);
+    const sources = [
+      'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js',
+      'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js',
+      'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
+    ];
+    let idx = 0;
+    function tryLoad() {
+      if (idx >= sources.length) {
+        console.log('jsQR: semua CDN gagal, coba BarcodeDetector saja');
+        // Coba paksa BarcodeDetector sebagai fallback terakhir
+        if ('BarcodeDetector' in window) startQRScanNative();
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = sources[idx++];
+      s.onload = () => console.log('jsQR loaded from', s.src);
+      s.onerror = tryLoad;
+      document.head.appendChild(s);
+    }
+    tryLoad();
   }
 
   vid.addEventListener('playing', () => { if (active) tick(); }, { once: true });
