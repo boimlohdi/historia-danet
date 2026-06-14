@@ -1614,15 +1614,37 @@ function gotoScan() {
 
   // Jika di Android APK, langsung trigger native scanner tanpa start WebView camera
   if (window.AndroidQR) {
+    // Reset status setiap kali buka scan
     document.getElementById('scan-status').innerHTML =
-      '<div class="scan-pulse"></div><span>Membuka scanner...</span>';
-    window.onAndroidQRResult = function(code) {
+      '<div class="scan-pulse"></div><span>Tap untuk scan QR Code</span>';
+
+    // Reset callback
+    window.onAndroidQRResult = null;
+
+    // Tampilkan tombol trigger scan
+    const scanArea = document.getElementById('camera-area');
+    scanArea.style.cursor = 'pointer';
+    scanArea.onclick = function() {
+      scanArea.onclick = null;
       document.getElementById('scan-status').innerHTML =
-        '<div class="scan-pulse" style="background:var(--pm)"></div>' +
-        '<span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
-      setTimeout(() => findDevice(code), 300);
+        '<div class="scan-pulse"></div><span>Membuka scanner...</span>';
+      window.onAndroidQRResult = function(code) {
+        document.getElementById('scan-status').innerHTML =
+          '<div class="scan-pulse" style="background:var(--pm)"></div>' +
+          '<span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
+        setTimeout(() => {
+          scanArea.onclick = null;
+          findDevice(code);
+        }, 300);
+      };
+      window.AndroidQR.startScan();
     };
-    setTimeout(() => window.AndroidQR.startScan(), 500);
+
+    // Auto trigger setelah 500ms
+    setTimeout(() => {
+      if (scanArea.onclick) scanArea.onclick();
+    }, 500);
+
   } else {
     // Browser biasa — pakai WebView camera
     startCamera();
@@ -1630,6 +1652,13 @@ function gotoScan() {
 }
 
 async function startCamera() {
+  // Jika di Android APK dengan native scanner, skip WebView camera
+  if (window.AndroidQR) {
+    document.getElementById('scan-status').innerHTML =
+      '<div class="scan-pulse"></div><span>Tap untuk scan QR Code</span>';
+    return;
+  }
+
   try {
     videoStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
