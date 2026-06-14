@@ -1258,7 +1258,11 @@ const CFG = {
   TOKEN: 'm3C7O-OLFIoNesNDcgYB_UQVDIfbMYLQiNo8-bSB',
   WEB:   'http://172.17.164.100',       // Windows XAMPP (diakses via proxy)
 };
-const H = { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' };
+const H = {
+  'xc-token': CFG.TOKEN,
+  'Content-Type': 'application/json',
+  'ngrok-skip-browser-warning': '1',
+};
 
 // ── STATE ──
 let session = null;
