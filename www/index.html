@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Historia Danet">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
-<title>Historia Danet</title>
+<title>Historia Danet v2</title>
 <style>
 /* ═══════════════════════════════════════════
    DESIGN TOKENS
@@ -554,7 +554,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
         <div class="field-label">EMAIL</div>
         <div class="field-input" id="wrap-email">
           <span class="field-icon">👤</span>
-          <input id="inp-email" type="email" placeholder="operator@danet.id"
+          <input id="inp-email" type="email" placeholder="admin@danet.id"
             autocomplete="email" autocapitalize="none">
         </div>
       </div>
@@ -598,7 +598,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
   <div class="scroll" id="home-scroll">
     <div class="scroll-pad">
       <div>
-        <div class="greeting" id="home-greeting">Halo, <strong>Operator</strong> 👋</div>
+        <div class="greeting" id="home-greeting">Halo, <strong>Teknisi</strong> 👋</div>
         <div style="font-size:11px;color:var(--text-3);margin-top:3px;" id="home-date"></div>
       </div>
 
@@ -1119,6 +1119,129 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
   </div>
 </div>
 
+<!-- ╔══════════════════════════════════════╗
+     ║  MODAL: EDIT HISTORY RECORD         ║
+     ╚══════════════════════════════════════╝ -->
+<div id="modal-edit-rec" style="position:fixed;inset:0;background:rgba(0,0,0,.75);
+  display:none;align-items:flex-end;justify-content:center;z-index:300;padding:0;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);
+    border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;
+    max-height:92vh;overflow-y:auto;">
+
+    <div style="width:40px;height:4px;background:var(--border-b);border-radius:2px;margin:0 auto 16px;"></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:16px;font-weight:700;">✏️ Edit Record</div>
+      <button onclick="closeEditRecord()"
+        style="width:30px;height:30px;background:var(--bg-base);border:1px solid var(--border);
+               border-radius:7px;font-size:16px;color:var(--text-2);cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Info record (read-only) -->
+    <div id="edit-rec-info" style="background:var(--bg-base);border:1px solid var(--border);
+      border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px;color:var(--text-2);"></div>
+
+    <input type="hidden" id="edit-rec-id">
+    <input type="hidden" id="edit-rec-role">
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+
+      <!-- Judul — Admin & Shift Leader -->
+      <div class="edit-field-wrap" id="ef-title-wrap">
+        <div class="field-label">JUDUL PEKERJAAN</div>
+        <div class="field-input"><input id="ef-title" type="text" placeholder="Judul pekerjaan..."></div>
+      </div>
+
+      <!-- Durasi — Admin & Shift Leader -->
+      <div class="edit-field-wrap" id="ef-dur-wrap">
+        <div class="field-label">DURASI (JAM)</div>
+        <div class="field-input"><input id="ef-dur" type="number" placeholder="2.5" step="0.5" min="0"></div>
+      </div>
+
+      <!-- Status — Admin & Shift Leader -->
+      <div class="edit-field-wrap" id="ef-status-wrap">
+        <div class="field-label">STATUS</div>
+        <div class="chip-row" id="ef-status-chips">
+          <div class="chip" data-estatus="selesai" onclick="selEditStatus(this)">Selesai</div>
+          <div class="chip" data-estatus="dalam proses" onclick="selEditStatus(this)">Dalam Proses</div>
+          <div class="chip" data-estatus="ditunda" onclick="selEditStatus(this)">Ditunda</div>
+          <div class="chip" data-estatus="dibatalkan" onclick="selEditStatus(this)">Dibatalkan</div>
+        </div>
+      </div>
+
+      <!-- Deskripsi — Admin & Shift Leader -->
+      <div class="edit-field-wrap" id="ef-desc-wrap">
+        <div class="field-label">DESKRIPSI</div>
+        <textarea id="ef-desc" class="field-ta" placeholder="Deskripsi pekerjaan..."></textarea>
+      </div>
+
+      <!-- Tindakan — Admin & Shift Leader -->
+      <div class="edit-field-wrap" id="ef-action-wrap">
+        <div class="field-label">TINDAKAN YANG DILAKUKAN</div>
+        <textarea id="ef-action" class="field-ta" placeholder="Tindakan yang dilakukan..."></textarea>
+      </div>
+
+      <!-- Field khusus Admin saja -->
+      <div id="ef-admin-fields" style="display:none;flex-direction:column;gap:12px;">
+        <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;
+          padding:6px 0;border-top:1px solid var(--border);margin-top:4px;">
+          ── KHUSUS ADMINISTRATOR ──
+        </div>
+
+        <div>
+          <div class="field-label">TANGGAL PELAKSANAAN</div>
+          <div class="field-input"><input id="ef-date" type="date"></div>
+        </div>
+        <div>
+          <div class="field-label">NAMA TEKNISI</div>
+          <div class="field-input"><input id="ef-tech" type="text" placeholder="Nama teknisi..."></div>
+        </div>
+        <div>
+          <div class="field-label">JAM MULAI</div>
+          <div class="field-input"><input id="ef-start" type="time"></div>
+        </div>
+        <div>
+          <div class="field-label">JAM SELESAI</div>
+          <div class="field-input"><input id="ef-end" type="time"></div>
+        </div>
+        <div>
+          <div class="field-label">TEMUAN / FINDINGS</div>
+          <textarea id="ef-findings" class="field-ta" placeholder="Temuan kondisi perangkat..."></textarea>
+        </div>
+        <div>
+          <div class="field-label">REKOMENDASI</div>
+          <textarea id="ef-recom" class="field-ta" placeholder="Rekomendasi tindak lanjut..."></textarea>
+        </div>
+        <div>
+          <div class="field-label">JADWAL PM BERIKUTNYA</div>
+          <div class="field-input"><input id="ef-next" type="date"></div>
+        </div>
+        <div>
+          <div class="field-label">BIAYA (Rp)</div>
+          <div class="field-input"><input id="ef-cost" type="number" placeholder="0" min="0"></div>
+        </div>
+        <div>
+          <div class="field-label">PRIORITAS</div>
+          <div class="chip-row">
+            <div class="chip" data-eprio="rendah" onclick="selEditPrio(this)">Rendah</div>
+            <div class="chip active-accent" data-eprio="normal" onclick="selEditPrio(this)">Normal</div>
+            <div class="chip" data-eprio="tinggi" onclick="selEditPrio(this)">Tinggi</div>
+            <div class="chip" data-eprio="kritis" onclick="selEditPrio(this)">Kritis</div>
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-save-edit-rec" onclick="saveEditRecord()"
+        style="width:100%;padding:13px;background:var(--accent);color:#001A2E;
+               border:none;border-radius:12px;font-size:15px;font-weight:700;
+               letter-spacing:1px;cursor:pointer;margin-top:4px;">
+        ✓ SIMPAN PERUBAHAN
+      </button>
+      <div style="height:8px;"></div>
+    </div>
+  </div>
+</div>
+
 </div><!-- end #app -->
 
 <script>
@@ -1294,15 +1417,21 @@ function goBack() {
 }
 
 function navTo(tab) {
+  const role    = session?.role || '';
+  const isAdmin = role === 'admin';
+
   if (tab === 'home') {
     screenStack = ['home'];
     showScreen('home', false);
     loadHomeData();
   } else if (tab === 'history') {
+    // Semua role bisa lihat history
     screenStack = ['home', 'history'];
     showScreen('history', false);
     loadAllHistory();
   } else if (tab === 'devices') {
+    // Hanya admin
+    if (!isAdmin) { toast('Akses terbatas untuk Administrator', true); return; }
     screenStack = ['home', 'devices'];
     showScreen('devices', false);
     loadDevices();
@@ -1392,19 +1521,40 @@ async function loadHomeData() {
   if (!session) return;
 
   // Avatar & greeting
-  const name = session.name || session.Name || 'Operator';
-  const role = session.role || session.Role || '';
+  const name    = session.name || session.Name || 'Teknisi';
+  const role    = session.role || session.Role || '';
+  const isAdmin = role === 'admin';
+  const isSL    = role === 'shift_leader';
+
   document.getElementById('home-avatar').textContent = name.charAt(0).toUpperCase();
-  document.getElementById('home-greeting').innerHTML = `Halo, <strong>${name}</strong> 👋`;
 
-  // Tampilkan menu Perangkat hanya untuk admin
-  const devNav = document.getElementById('nav-devices');
-  if (devNav) devNav.style.display = role === 'admin' ? 'flex' : 'none';
+  const roleInfo = {
+    admin:        { label: 'Administrator', color: 'var(--accent)', emoji: '👑' },
+    shift_leader: { label: 'Shift Leader',  color: 'var(--cm)',     emoji: '⭐' },
+    teknisi:      { label: 'Teknisi',       color: 'var(--pm)',     emoji: '👷' },
+  };
+  const ri = roleInfo[role] || roleInfo.teknisi;
 
-  // Update bottom nav grid jika admin (4 item)
-  const bottomNav = document.getElementById('home-bottom-nav');
-  if (bottomNav && role === 'admin') {
-    bottomNav.style.gridTemplateColumns = 'repeat(4,1fr)';
+  document.getElementById('home-greeting').innerHTML =
+    `Halo, <strong>${name}</strong> ${ri.emoji}`;
+  document.getElementById('home-date').innerHTML =
+    `${new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+     &nbsp;<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;
+     background:${ri.color}20;color:${ri.color};letter-spacing:1px;">${ri.label.toUpperCase()}</span>`;
+
+  const devNav       = document.getElementById('nav-devices');
+  const homeBottomNav = document.getElementById('home-bottom-nav');
+
+  if (isAdmin) {
+    if (devNav) devNav.style.display = 'flex';
+    if (homeBottomNav) homeBottomNav.style.gridTemplateColumns = 'repeat(4,1fr)';
+  } else if (isSL) {
+    if (devNav) devNav.style.display = 'none';
+    if (homeBottomNav) homeBottomNav.style.gridTemplateColumns = 'repeat(3,1fr)';
+  } else {
+    if (devNav) devNav.style.display = 'none';
+    if (homeBottomNav) homeBottomNav.style.gridTemplateColumns = 'repeat(3,1fr)';
+    // Semua role bisa lihat history — tombol tetap tampil
   }
 
   // Stats
@@ -1710,6 +1860,12 @@ async function loadDeviceRecords() {
       `/api/v1/db/data/noco/${baseId}/${recId}?where=${encodeURIComponent(where)}&sort=-work_date&limit=50`
     );
     const recs = data?.list || [];
+    // Simpan ke cache global untuk edit
+    if (!window._recCache) window._recCache = {};
+    recs.forEach(r => {
+      const id = r.Id || r.id;
+      if (id) window._recCache[String(id)] = r;
+    });
 
     document.getElementById('rec-count').textContent = `${recs.length} record`;
 
@@ -1729,14 +1885,36 @@ async function loadDeviceRecords() {
 }
 
 function buildRecCard(r) {
-  const t = (r.type || 'PM').toLowerCase();
+  const t  = (r.type || 'PM').toLowerCase();
   const statusColors = { selesai:'var(--pm)', 'dalam proses':'var(--accent)', ditunda:'var(--cm)', dibatalkan:'var(--danger)' };
   const sc = statusColors[r.status] || 'var(--text-3)';
+  const recId = r.Id || r.id || '';
+
+  // Simpan record ke cache untuk edit
+  if (!window._recCache) window._recCache = {};
+  if (recId) window._recCache[String(recId)] = r;
+
+  const infoBox = (label, value, color) => value ? `
+    <div style="background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:6px;">
+      <div style="font-size:9px;color:${color || 'var(--text-3)'};font-weight:700;letter-spacing:1px;text-transform:uppercase;">${label}</div>
+      <div style="font-size:12px;color:var(--text-2);margin-top:3px;line-height:1.5;">${value}</div>
+    </div>` : '';
+
+  // Tombol edit selalu muncul — role dicek saat diklik
+  const editBtn = `<button onclick="openEditRecord('${recId}')"
+    style="padding:3px 10px;background:rgba(0,194,255,0.1);
+           border:1px solid var(--accent);border-radius:6px;
+           color:var(--accent);font-size:10px;font-weight:700;
+           cursor:pointer;letter-spacing:0.5px;">✏️ Edit</button>`;
+
   return `
     <div class="rec-item ${t}">
       <div class="rec-top">
         <div class="rec-title">${r.title || '-'}</div>
-        <div class="badge badge-${t}">${r.type}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <div class="badge badge-${t}">${r.type}</div>
+          ${editBtn}
+        </div>
       </div>
       <div class="rec-meta">
         <div class="meta-item">
@@ -1752,11 +1930,18 @@ function buildRecCard(r) {
           <div class="meta-val">${r.duration_hours ? r.duration_hours + ' jam' : '-'}</div>
         </div>
       </div>
-      ${r.findings ? `<div class="findings-box"><div class="findings-label">Temuan:</div><div class="findings-text">${r.findings}</div></div>` : ''}
-      <div class="rec-bottom">
+      ${infoBox('📋 Deskripsi', r.description, 'var(--text-3)')}
+      ${infoBox('🔍 Temuan / Findings', r.findings, 'var(--cm)')}
+      ${infoBox('🔧 Tindakan yang Dilakukan', r.action_taken, 'var(--pm)')}
+      ${infoBox('💡 Rekomendasi', r.recommendation, 'var(--accent)')}
+      <div class="rec-bottom" style="margin-top:8px;">
         <div class="status-dot" style="background:${sc}"></div>
         <span style="font-size:11px;color:${sc};font-weight:500;">${r.status || 'selesai'}</span>
-        ${r.next_schedule && r.type==='PM' ? `<span style="font-size:10px;color:var(--text-3)"> · PM berikutnya: ${fmtDate(r.next_schedule)}</span>` : ''}
+        ${r.cost && r.cost > 0 ? `<span style="font-size:10px;color:var(--text-3);margin-left:8px;">· Biaya: Rp ${Number(r.cost).toLocaleString('id-ID')}</span>` : ''}
+        ${r.next_schedule && r.type==='PM' ? `<span style="font-size:10px;color:var(--text-3);margin-left:8px;"> · PM berikutnya: ${fmtDate(r.next_schedule)}</span>` : ''}
+        <button onclick="openEditRecord('${recId}')" style="margin-left:auto;padding:4px 12px;
+          background:var(--accent);color:#001A2E;border:none;border-radius:6px;
+          font-size:11px;font-weight:700;cursor:pointer;">✏️ Edit</button>
       </div>
     </div>
   `;
@@ -1781,6 +1966,12 @@ async function loadAllHistory() {
     let where = histFilter !== 'Semua' ? `?where=${encodeURIComponent(`(type,eq,${histFilter})`)}&` : '?';
     const data = await api(`/api/v1/db/data/noco/${baseId}/${recId}${where}sort=-work_date&limit=100`);
     allRecords = data?.list || [];
+    // Simpan ke cache global untuk edit
+    if (!window._recCache) window._recCache = {};
+    allRecords.forEach(r => {
+      const id = r.Id || r.id;
+      if (id) window._recCache[String(id)] = r;
+    });
 
     document.getElementById('hist-count').textContent = `${allRecords.length} record`;
 
@@ -2268,6 +2459,160 @@ function closeQRModal() {
 // Close QR modal on overlay click
 document.getElementById('modal-qr')?.addEventListener('click', function(e) {
   if (e.target === this) closeQRModal();
+});
+
+// ── EDIT HISTORY RECORD ────────────────────────────
+let currentEditRecord = null;
+let editRecStatus     = 'selesai';
+let editRecPrio       = 'normal';
+
+function openEditRecord(id) {
+  // Ambil record dari cache
+  const cache = window._recCache || {};
+  const rec   = cache[String(id)];
+  if (!rec) { toast('Data record tidak ditemukan', true); return; }
+
+  let role = '';
+  try {
+    const s = session || JSON.parse(localStorage.getItem('hd_session') || '{}');
+    role = s?.role || '';
+  } catch {}
+
+  const isAdmin = role === 'admin';
+  const isSL    = role === 'shift_leader';
+  if (!isAdmin && !isSL) { toast('Anda tidak punya akses edit', true); return; }
+
+  currentEditRecord = rec;
+  editRecStatus = rec.status || 'selesai';
+  editRecPrio   = rec.priority || 'normal';
+
+  // Info record
+  document.getElementById('edit-rec-info').innerHTML =
+    `<strong>${rec.title || '-'}</strong><br>
+     <span style="color:var(--accent);font-size:10px;letter-spacing:1px;">${rec.type || ''}</span>
+     &nbsp;·&nbsp; ${fmtDate(rec.work_date)} &nbsp;·&nbsp; ${rec.technician_name || '-'}`;
+
+  document.getElementById('edit-rec-id').value   = id;
+  document.getElementById('edit-rec-role').value = role;
+
+  // Isi field bersama (Admin + Shift Leader)
+  document.getElementById('ef-title').value   = rec.title || '';
+  document.getElementById('ef-dur').value     = rec.duration_hours || '';
+  document.getElementById('ef-desc').value    = rec.description || '';
+  document.getElementById('ef-action').value  = rec.action_taken || '';
+
+  // Status chips
+  document.querySelectorAll('[data-estatus]').forEach(c => c.className = 'chip');
+  const activeStatus = document.querySelector(`[data-estatus="${editRecStatus}"]`);
+  if (activeStatus) activeStatus.className = 'chip active-accent';
+
+  // Field khusus Admin
+  const adminFields = document.getElementById('ef-admin-fields');
+  if (isAdmin) {
+    adminFields.style.display = 'flex';
+    document.getElementById('ef-date').value     = rec.work_date || '';
+    document.getElementById('ef-tech').value     = rec.technician_name || '';
+    document.getElementById('ef-start').value    = rec.start_time || '';
+    document.getElementById('ef-end').value      = rec.end_time || '';
+    document.getElementById('ef-findings').value = rec.findings || '';
+    document.getElementById('ef-recom').value    = rec.recommendation || '';
+    document.getElementById('ef-next').value     = rec.next_schedule || '';
+    document.getElementById('ef-cost').value     = rec.cost || 0;
+
+    document.querySelectorAll('[data-eprio]').forEach(c => c.className = 'chip');
+    const activePrio = document.querySelector(`[data-eprio="${editRecPrio}"]`);
+    if (activePrio) activePrio.className = 'chip active-accent';
+  } else {
+    adminFields.style.display = 'none';
+  }
+
+  document.getElementById('modal-edit-rec').style.display = 'flex';
+}
+
+function closeEditRecord() {
+  document.getElementById('modal-edit-rec').style.display = 'none';
+  currentEditRecord = null;
+}
+
+function selEditStatus(el) {
+  editRecStatus = el.dataset.estatus;
+  document.querySelectorAll('[data-estatus]').forEach(c => c.className = 'chip');
+  el.className = 'chip active-accent';
+}
+
+function selEditPrio(el) {
+  editRecPrio = el.dataset.eprio;
+  const colors = { rendah:'', normal:'active-accent', tinggi:'active-cm', kritis:'active-danger' };
+  document.querySelectorAll('[data-eprio]').forEach(c => c.className = 'chip');
+  el.className = `chip ${colors[editRecPrio] || 'active-accent'}`;
+}
+
+async function saveEditRecord() {
+  if (!currentEditRecord) return;
+  const role    = session?.role || '';
+  const isAdmin = role === 'admin';
+  const recId   = document.getElementById('edit-rec-id').value;
+
+  const btn = document.getElementById('btn-save-edit-rec');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+  try {
+    const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
+
+    // Field yang bisa diedit Shift Leader dan Admin
+    const payload = {
+      title:        document.getElementById('ef-title').value.trim(),
+      duration_hours: parseFloat(document.getElementById('ef-dur').value) || null,
+      status:       editRecStatus,
+      description:  document.getElementById('ef-desc').value.trim(),
+      action_taken: document.getElementById('ef-action').value.trim(),
+      updated_at:   new Date().toISOString().substring(0,19).replace('T',' '),
+    };
+
+    // Field tambahan khusus Admin
+    if (isAdmin) {
+      const workDate = document.getElementById('ef-date').value;
+      const cost     = document.getElementById('ef-cost').value;
+      payload.work_date        = workDate || null;
+      payload.technician_name  = document.getElementById('ef-tech').value.trim() || null;
+      payload.start_time       = document.getElementById('ef-start').value || null;
+      payload.end_time         = document.getElementById('ef-end').value || null;
+      payload.findings         = document.getElementById('ef-findings').value.trim() || null;
+      payload.recommendation   = document.getElementById('ef-recom').value.trim() || null;
+      payload.next_schedule    = document.getElementById('ef-next').value || null;
+      payload.cost             = parseFloat(cost) || 0;
+      payload.priority         = editRecPrio;
+    }
+
+    const res = await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}/${recId}`, {
+      method: 'PATCH',
+      headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`API ${res.status}: ${err}`);
+    }
+
+    toast('✓ Record berhasil diperbarui');
+    closeEditRecord();
+    // Reload records
+    setTimeout(() => {
+      if (currentDevice) loadDeviceRecords();
+      else loadAllHistory();
+    }, 500);
+
+  } catch(e) {
+    toast('Gagal menyimpan: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = '✓ SIMPAN PERUBAHAN';
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('modal-edit-rec')?.addEventListener('click', function(e) {
+  if (e.target === this) closeEditRecord();
 });
 
 // ── UTILS ──
