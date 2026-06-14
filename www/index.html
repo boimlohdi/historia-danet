@@ -1627,42 +1627,19 @@ async function startCamera() {
     document.getElementById('scan-status').innerHTML =
       '<div class="scan-pulse"></div><span>Memuat scanner...</span>';
 
-    // Cek BarcodeDetector API (native Chrome Android)
+    // Versi HTTP: pakai BarcodeDetector jika ada, fallback ke inline QR decoder
+    document.getElementById('scan-status').innerHTML =
+      '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
+
     if ('BarcodeDetector' in window) {
-      document.getElementById('scan-status').innerHTML =
-        '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
-      startQRScanNative();
+      try {
+        const test = new BarcodeDetector({ formats: ['qr_code'] });
+        startQRScanNative();
+      } catch {
+        startQRScanInline();
+      }
     } else {
-      // Fallback: load jsQR dari CDN
-      if (!window.jsQR) {
-        try {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js';
-            s.onload  = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-          });
-        } catch {
-          // CDN gagal, coba unpkg
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js';
-            s.onload  = resolve;
-            s.onerror = () => { resolve(); }; // lanjut walau gagal
-            document.head.appendChild(s);
-          });
-        }
-      }
-      if (window.jsQR) {
-        document.getElementById('scan-status').innerHTML =
-          '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
-        startQRScanCanvas();
-      } else {
-        document.getElementById('scan-status').innerHTML =
-          '<span style="color:#F39C12">⚠ Scanner tidak tersedia, gunakan manual</span>';
-        setTimeout(() => openManual(), 1000);
-      }
+      startQRScanInline();
     }
   } catch(e) {
     document.getElementById('scan-status').innerHTML =
@@ -1675,26 +1652,31 @@ async function startCamera() {
 function startQRScanNative() {
   const vid      = document.getElementById('qr-video');
   const detector = new BarcodeDetector({ formats: ['qr_code'] });
+  let   active   = true;
 
   async function tick() {
-    if (!videoStream) return;
-    if (vid.readyState >= vid.HAVE_ENOUGH_DATA && vid.videoWidth > 0) {
-      try {
+    if (!active || !videoStream) return;
+    try {
+      if (vid.readyState >= 2 && vid.videoWidth > 0) {
         const codes = await detector.detect(vid);
         if (codes.length > 0 && codes[0].rawValue) {
+          active = false;
           const result = codes[0].rawValue;
           document.getElementById('scan-status').innerHTML =
             '<div class="scan-pulse" style="background:var(--pm)"></div>' +
             '<span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
           stopCamera();
-          findDevice(result);
+          setTimeout(() => findDevice(result), 300);
           return;
         }
-      } catch(e) { /* lanjut */ }
-    }
-    qrScanner = setTimeout(tick, 300);
+      }
+    } catch(e) { /* lanjut */ }
+    if (active) qrScanner = setTimeout(tick, 150);
   }
-  tick();
+
+  // Mulai setelah video benar-benar siap
+  vid.addEventListener('playing', () => { if (active) tick(); }, { once: true });
+  if (vid.readyState >= 2) tick();
 }
 
 // ── Metode 2: jsQR via canvas ──
@@ -1731,8 +1713,77 @@ function startQRScanCanvas() {
   qrScanner = requestAnimationFrame(tick);
 }
 
+// ── Metode 3: Inline canvas scan (HTTP fallback, no CDN needed) ──
+function startQRScanInline() {
+  const vid    = document.getElementById('qr-video');
+  const canvas = document.createElement('canvas');
+  const ctx    = canvas.getContext('2d', { willReadFrequently: true });
+  let   active = true;
+
+  async function tick() {
+    if (!active || !videoStream) return;
+    if (vid.readyState >= 2 && vid.videoWidth > 0) {
+      canvas.width  = vid.videoWidth;
+      canvas.height = vid.videoHeight;
+      ctx.drawImage(vid, 0, 0);
+
+      // Coba BarcodeDetector dulu walau di HTTP
+      if (window._bd) {
+        try {
+          const codes = await window._bd.detect(canvas);
+          if (codes.length > 0 && codes[0].rawValue) {
+            active = false;
+            onQRFound(codes[0].rawValue);
+            return;
+          }
+        } catch {}
+      }
+
+      // Fallback: jsQR jika sudah load
+      if (window.jsQR) {
+        try {
+          const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+          if (code && code.data) {
+            active = false;
+            onQRFound(code.data);
+            return;
+          }
+        } catch {}
+      }
+    }
+    if (active) qrScanner = setTimeout(tick, 150);
+  }
+
+  // Init BarcodeDetector
+  try { window._bd = new BarcodeDetector({ formats: ['qr_code'] }); } catch {}
+
+  // Load jsQR sebagai backup (async, tidak block)
+  if (!window.jsQR) {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js';
+    s.onerror = () => {
+      const s2 = document.createElement('script');
+      s2.src = 'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js';
+      document.head.appendChild(s2);
+    };
+    document.head.appendChild(s);
+  }
+
+  vid.addEventListener('playing', () => { if (active) tick(); }, { once: true });
+  if (vid.readyState >= 2) tick();
+}
+
+function onQRFound(result) {
+  document.getElementById('scan-status').innerHTML =
+    '<div class="scan-pulse" style="background:var(--pm)"></div>' +
+    '<span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
+  stopCamera();
+  setTimeout(() => findDevice(result), 300);
+}
+
 // Alias untuk backward compatibility
-function startQRScan() { startQRScanCanvas(); }
+function startQRScan() { startQRScanInline(); }
 
 function stopCamera() {
   if (qrScanner) {
