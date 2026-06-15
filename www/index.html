@@ -1041,6 +1041,21 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
         <div class="field-input"><input id="f-cost" type="number" placeholder="0" value="0" min="0"></div>
       </div>
 
+      <!-- Upload Foto -->
+      <div class="field-group">
+        <div class="field-label">FOTO DOKUMENTASI</div>
+        <div style="border:1.5px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:var(--bg-card);"
+          onclick="document.getElementById('f-photos').click()" id="photo-drop-zone">
+          <div style="font-size:28px;margin-bottom:6px;">📷</div>
+          <div style="font-size:12px;color:var(--text-2);">Tap untuk pilih foto</div>
+          <div style="font-size:10px;color:var(--text-3);margin-top:3px;">JPG, PNG, max 5MB per foto</div>
+        </div>
+        <input type="file" id="f-photos" accept="image/*" multiple style="display:none;"
+          onchange="handlePhotoSelect(this)">
+        <div id="photo-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+        <div id="photo-upload-status" style="font-size:11px;color:var(--text-2);margin-top:4px;"></div>
+      </div>
+
       <button class="btn btn-pm" id="btn-save" onclick="saveRecord()">✓  SIMPAN RECORD PM</button>
       <div style="height:20px;"></div>
     </div>
@@ -1395,6 +1410,20 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
             <div class="chip" data-eprio="kritis" onclick="selEditPrio(this)">Kritis</div>
           </div>
         </div>
+      </div>
+
+      <!-- Upload Foto tambahan -->
+      <div>
+        <div class="field-label" style="margin-bottom:8px;">FOTO DOKUMENTASI</div>
+        <div style="border:1.5px dashed var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;background:var(--bg-base);"
+          onclick="document.getElementById('ef-photos').click()">
+          <div style="font-size:22px;margin-bottom:4px;">📷</div>
+          <div style="font-size:11px;color:var(--text-2);">Tap untuk tambah foto</div>
+        </div>
+        <input type="file" id="ef-photos" accept="image/*" multiple style="display:none;"
+          onchange="handleEditPhotoSelect(this)">
+        <div id="edit-photo-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+        <div id="edit-photo-status" style="font-size:11px;color:var(--text-2);margin-top:4px;"></div>
       </div>
 
       <button id="btn-save-edit-rec" onclick="saveEditRecord()"
@@ -2328,6 +2357,7 @@ function buildRecCard(r) {
       ${infoBox('🔍 Temuan / Findings', r.findings, 'var(--cm)')}
       ${infoBox('🔧 Tindakan yang Dilakukan', r.action_taken, 'var(--pm)')}
       ${infoBox('💡 Rekomendasi', r.recommendation, 'var(--accent)')}
+      ${renderPhotos(r.photos)}
       <div class="rec-bottom" style="margin-top:8px;">
         <div class="status-dot" style="background:${sc}"></div>
         <span style="font-size:11px;color:${sc};font-weight:500;">${r.status || 'selesai'}</span>
@@ -2405,6 +2435,11 @@ function gotoAddRecord() {
   // Auto-fill nama teknisi dari session login
   document.getElementById('f-tech').value   = session?.name || session?.Name || '';
   document.getElementById('f-dur').value    = '';
+  // Reset foto
+  document.getElementById('f-photos').value = '';
+  document.getElementById('photo-preview').innerHTML = '';
+  document.getElementById('photo-upload-status').textContent = '';
+  window._selectedPhotos = [];
   document.getElementById('f-desc').value   = '';
   document.getElementById('f-findings').value = '';
   document.getElementById('f-action').value = '';
@@ -2480,6 +2515,14 @@ async function saveRecord() {
       cost:            parseFloat(document.getElementById('f-cost').value) || 0,
       created_by:      session?.id || session?.Id || null,
     };
+
+    // Upload foto jika ada
+    const btn2 = document.getElementById('btn-save');
+    if (window._selectedPhotos && window._selectedPhotos.length > 0) {
+      btn2.textContent = 'Mengupload foto...';
+      const uploaded = await uploadPhotos(window._selectedPhotos);
+      if (uploaded.length > 0) payload.photos = uploaded;
+    }
 
     await api(`/api/v1/db/data/noco/${baseId}/${recId}`, {
       method: 'POST', body: payload
@@ -3041,6 +3084,7 @@ function openEditRecord(id) {
     adminFields.style.display = 'none';
   }
 
+  resetEditPhotos();
   document.getElementById('modal-edit-rec').style.display = 'flex';
 }
 
@@ -3097,6 +3141,17 @@ async function saveEditRecord() {
       payload.next_schedule    = document.getElementById('ef-next').value || null;
       payload.cost             = parseFloat(cost) || 0;
       payload.priority         = editRecPrio;
+    }
+
+    // Upload foto tambahan jika ada
+    if (window._editSelectedPhotos && window._editSelectedPhotos.length > 0) {
+      document.getElementById('btn-save-edit-rec').textContent = 'Mengupload foto...';
+      const uploaded = await uploadPhotos(window._editSelectedPhotos);
+      if (uploaded.length > 0) {
+        // Gabung dengan foto lama jika ada
+        const existing = currentEditRecord?.photos || [];
+        payload.photos = [...existing, ...uploaded];
+      }
     }
 
     const res = await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}/${recId}`, {
@@ -3216,6 +3271,117 @@ document.addEventListener('click', function(e) {
   const m = document.getElementById('modal-del-record');
   if (m && e.target === m) closeDeleteRecord();
 });
+
+// ── FOTO UPLOAD ──
+window._selectedPhotos     = [];
+window._editSelectedPhotos = [];
+
+function handlePhotoSelect(input) {
+  const files = Array.from(input.files);
+  window._selectedPhotos = files;
+  renderPhotoPreview(files, 'photo-preview', 'photo-upload-status');
+}
+
+function handleEditPhotoSelect(input) {
+  const files = Array.from(input.files);
+  window._editSelectedPhotos = files;
+  renderPhotoPreview(files, 'edit-photo-preview', 'edit-photo-status');
+}
+
+function renderPhotoPreview(files, previewId, statusId) {
+  const preview = document.getElementById(previewId);
+  const status  = document.getElementById(statusId);
+  preview.innerHTML = '';
+  if (!files.length) { status.textContent = ''; return; }
+  status.textContent = `${files.length} foto dipilih`;
+  files.forEach((file, idx) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;width:80px;height:80px;flex-shrink:0;';
+      wrap.innerHTML = `
+        <img src="${e.target.result}"
+          style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+        <div onclick="removePhoto(${idx},'${previewId}','${statusId}')"
+          style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;
+                 background:var(--danger);border-radius:50%;display:flex;
+                 align-items:center;justify-content:center;cursor:pointer;
+                 font-size:12px;color:#fff;font-weight:700;">×</div>
+      `;
+      preview.appendChild(wrap);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function removePhoto(idx, previewId, statusId) {
+  if (previewId === 'photo-preview') {
+    window._selectedPhotos.splice(idx, 1);
+    renderPhotoPreview(window._selectedPhotos, previewId, statusId);
+  } else {
+    window._editSelectedPhotos.splice(idx, 1);
+    renderPhotoPreview(window._editSelectedPhotos, previewId, statusId);
+  }
+}
+
+async function uploadPhotos(files) {
+  const uploaded = [];
+  for (const file of files) {
+    try {
+      // Validasi ukuran max 5MB
+      if (file.size > 5 * 1024 * 1024) {
+        toast(`Foto "${file.name}" terlalu besar (max 5MB)`, true);
+        continue;
+      }
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${CFG.BASE}/api/v1/db/storage/upload?path=maintenance`, {
+        method: 'POST',
+        headers: { 'xc-token': CFG.TOKEN, 'ngrok-skip-browser-warning': '1' },
+        body: fd,
+      });
+      if (!res.ok) { const t=await res.text(); throw new Error(t); }
+      const data = await res.json();
+      // NocoDB return array
+      const result = Array.isArray(data) ? data[0] : data;
+      if (result) uploaded.push(result);
+    } catch(e) {
+      toast(`Gagal upload "${file.name}": ${e.message}`, true);
+    }
+  }
+  return uploaded;
+}
+
+// Tampilkan foto di record card
+function renderPhotos(photos) {
+  if (!photos || !photos.length) return '';
+  return `
+    <div style="margin-top:8px;">
+      <div style="font-size:9px;color:var(--text-3);font-weight:700;
+                  letter-spacing:1px;margin-bottom:6px;">FOTO DOKUMENTASI</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${photos.map(p => `
+          <a href="${p.url||p.signedUrl||''}" target="_blank" style="display:block;">
+            <img src="${p.url||p.signedUrl||''}"
+              style="width:72px;height:72px;object-fit:cover;border-radius:8px;
+                     border:1px solid var(--border);"
+              onerror="this.style.display='none'">
+          </a>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+// Reset edit photos saat modal dibuka
+function resetEditPhotos() {
+  window._editSelectedPhotos = [];
+  const prev = document.getElementById('edit-photo-preview');
+  const stat = document.getElementById('edit-photo-status');
+  const inp  = document.getElementById('ef-photos');
+  if (prev) prev.innerHTML = '';
+  if (stat) stat.textContent = '';
+  if (inp)  inp.value = '';
+}
 
 // ── TOGGLE EDIT NAMA TEKNISI ──
 let _techEditable = false;
