@@ -3362,24 +3362,46 @@ async function uploadPhotos(files) {
 function resolvePhotoUrl(p) {
   if (!p) return { thumb: '', full: '' };
 
-  // Full URL: pakai signedPath jika ada (sudah include token auth)
-  // signedPath format: "dltemp/TOKEN/.../filename.jpg" → BASE/dltemp/TOKEN/.../filename.jpg
-  let full = '';
-  if (p.signedPath)     full = CFG.BASE + '/' + p.signedPath;
-  else if (p.signedUrl) full = p.signedUrl;
-  else if (p.url)       full = p.url;
-  else if (p.path)      full = CFG.BASE + '/' + p.path;
+  // Gunakan LOCAL_BASE (172.17.87.135) untuk akses foto
+  // karena signedPath/path di-generate untuk server lokal
+  const LOCAL = 'http://172.17.87.135';
 
-  // Thumbnail: pakai tiny.signedPath
+  // Full: coba path biasa dulu (paling stabil, tidak expire)
+  let full = '';
+  if (p.path)           full = LOCAL + '/' + p.path;
+  else if (p.signedPath) full = LOCAL + '/' + p.signedPath;
+  else if (p.signedUrl)  full = p.signedUrl;
+  else if (p.url)        full = p.url;
+
+  // Thumbnail tiny
   let thumb = '';
   if (p.thumbnails && p.thumbnails.tiny) {
     const tiny = p.thumbnails.tiny;
-    if (tiny.signedPath)   thumb = CFG.BASE + '/' + tiny.signedPath;
+    if (tiny.signedPath)    thumb = LOCAL + '/' + tiny.signedPath;
     else if (tiny.signedUrl) thumb = tiny.signedUrl;
   }
-  if (!thumb) thumb = full; // fallback ke full
+  if (!thumb) thumb = full;
 
   return { thumb, full };
+}
+
+// Fetch foto dengan xc-token lalu inject sebagai blob URL
+async function loadPhotoBlob(url, imgEl, linkEl) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'xc-token': CFG.TOKEN, 'ngrok-skip-browser-warning': '1' }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    imgEl.src = blobUrl;
+    if (linkEl) linkEl.href = blobUrl;
+  } catch(e) {
+    imgEl.parentElement.innerHTML =
+      '<div style="width:80px;height:80px;border-radius:8px;background:var(--bg-card2);' +
+      'border:1px solid var(--border);display:flex;align-items:center;' +
+      'justify-content:center;font-size:11px;color:var(--text-3);">❌</div>';
+  }
 }
 
 function renderPhotos(photos) {
@@ -3390,21 +3412,36 @@ function renderPhotos(photos) {
   }
   if (!Array.isArray(list) || !list.length) return '';
 
-  const items = list.map(p => {
+  // Generate unique ID untuk setiap foto
+  const uid = 'ph' + Date.now();
+  const items = list.map((p, idx) => {
     const { thumb, full } = resolvePhotoUrl(p);
     if (!full && !thumb) return '';
     const title = p.title || p.name || 'Foto';
+    const imgId  = uid + '_img_' + idx;
+    const linkId = uid + '_lnk_' + idx;
     return `
-      <a href="${full||thumb}" target="_blank" style="display:block;flex-shrink:0;" title="${title}">
-        <img src="${thumb||full}"
+      <a id="${linkId}" href="#" target="_blank"
+        style="display:block;flex-shrink:0;" title="${title}">
+        <img id="${imgId}"
           style="width:80px;height:80px;object-fit:cover;border-radius:8px;
                  border:1.5px solid var(--border);background:var(--bg-card2);"
-          onerror="this.src='${full}'"
-        >
+          src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
       </a>`;
   }).filter(Boolean).join('');
 
   if (!items) return '';
+
+  // Trigger async load setelah DOM ready
+  setTimeout(() => {
+    list.forEach((p, idx) => {
+      const { thumb, full } = resolvePhotoUrl(p);
+      const imgEl  = document.getElementById(uid + '_img_' + idx);
+      const linkEl = document.getElementById(uid + '_lnk_' + idx);
+      if (imgEl) loadPhotoBlob(thumb || full, imgEl, linkEl);
+    });
+  }, 100);
+
   return `
     <div style="margin-top:10px;background:var(--bg-base);border:1px solid var(--border);
                 border-radius:8px;padding:10px;">
