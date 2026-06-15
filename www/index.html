@@ -597,10 +597,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 .empty-text{ font-size:13px; color:var(--text-3); }
 
 /* Server info */
-.server-info{
-  text-align:center; font-size:11px; color:var(--text-3);
-  padding:8px; border:1px dashed var(--border); border-radius:8px;
-}
+
 
 /* Row fields */
 .row-fields{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -720,12 +717,8 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 
       <button class="btn btn-accent" id="btn-login" onclick="doLogin()">MASUK</button>
 
-      <div class="server-info">
-        🔀 Proxy: <strong>172.17.87.135</strong> &nbsp;·&nbsp; 🗄️ DB: <strong>NocoDB via /api/</strong>
-      </div>
-
-      <div style="text-align:center;font-size:11px;color:var(--text-3)">
-        Historia Danet v1.0.0 · Danet Engineering
+      <div style="text-align:center;font-size:11px;color:var(--text-3);padding:4px 0;">
+        Historia Danet v1.0.0 &nbsp;·&nbsp; © 2026 Made by <strong style="color:var(--accent);">BOIM</strong>
       </div>
     </div>
   </div>
@@ -1405,34 +1398,29 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
   </div>
 </div>
 
-
-<!-- ╔══════════════════════════════════════╗
-     ║  MODAL: KONFIRMASI HAPUS PERANGKAT  ║
-     ╚══════════════════════════════════════╝ -->
-<div id="modal-del-device" style="position:fixed;inset:0;background:rgba(0,0,0,.8);
+<!-- MODAL: KONFIRMASI HAPUS RECORD -->
+<div id="modal-del-record" style="position:fixed;inset:0;background:rgba(0,0,0,.8);
   display:none;align-items:center;justify-content:center;z-index:400;padding:24px;">
   <div style="background:var(--bg-card);border:1px solid var(--border);
     border-radius:20px;padding:24px;width:100%;max-width:360px;">
     <div style="font-size:40px;text-align:center;margin-bottom:12px;">🗑️</div>
-    <div style="font-size:17px;font-weight:700;text-align:center;margin-bottom:8px;">Hapus Perangkat?</div>
-    <div style="font-size:13px;color:var(--text-2);text-align:center;line-height:1.6;margin-bottom:6px;">
-      Anda akan menghapus perangkat:
+    <div style="font-size:17px;font-weight:700;text-align:center;margin-bottom:8px;">Hapus Record?</div>
+    <div style="font-size:13px;color:var(--text-2);text-align:center;margin-bottom:6px;">
+      Anda akan menghapus catatan:
     </div>
-    <div id="del-dev-name" style="font-size:14px;font-weight:700;color:var(--danger);
+    <div id="del-rec-name" style="font-size:13px;font-weight:700;color:var(--danger);
       text-align:center;padding:10px;background:rgba(231,76,60,.1);
       border:1px solid var(--danger);border-radius:10px;margin-bottom:12px;"></div>
     <div style="font-size:11px;color:var(--text-3);text-align:center;margin-bottom:20px;">
-      ⚠️ Tindakan ini tidak dapat dibatalkan.<br>
-      Perangkat <strong>beserta seluruh catatan PM/CM-nya</strong><br>
-      akan dihapus permanen dari database.
+      ⚠️ Tindakan ini tidak dapat dibatalkan.
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <button onclick="closeDeleteDevice()"
+      <button onclick="closeDeleteRecord()"
         style="padding:12px;background:none;border:1.5px solid var(--border);
                color:var(--text-2);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
         Batal
       </button>
-      <button id="btn-del-device-ok" onclick="doDeleteDevice()"
+      <button id="btn-del-record-ok" onclick="doDeleteRecord()"
         style="padding:12px;background:var(--danger);color:#fff;
                border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
         Ya, Hapus
@@ -2210,20 +2198,12 @@ function buildRecCard(r) {
       <div style="font-size:12px;color:var(--text-2);margin-top:3px;line-height:1.5;">${value}</div>
     </div>` : '';
 
-  // Tombol edit selalu muncul — role dicek saat diklik
-  const editBtn = `<button onclick="openEditRecord('${recId}')"
-    style="padding:3px 10px;background:rgba(0,194,255,0.1);
-           border:1px solid var(--accent);border-radius:6px;
-           color:var(--accent);font-size:10px;font-weight:700;
-           cursor:pointer;letter-spacing:0.5px;">✏️ Edit</button>`;
-
   return `
     <div class="rec-item ${t}">
       <div class="rec-top">
         <div class="rec-title">${r.title || '-'}</div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
           <div class="badge badge-${t}">${r.type}</div>
-          ${editBtn}
         </div>
       </div>
       <div class="rec-meta">
@@ -2249,9 +2229,18 @@ function buildRecCard(r) {
         <span style="font-size:11px;color:${sc};font-weight:500;">${r.status || 'selesai'}</span>
         ${r.cost && r.cost > 0 ? `<span style="font-size:10px;color:var(--text-3);margin-left:8px;">· Biaya: Rp ${Number(r.cost).toLocaleString('id-ID')}</span>` : ''}
         ${r.next_schedule && r.type==='PM' ? `<span style="font-size:10px;color:var(--text-3);margin-left:8px;"> · PM berikutnya: ${fmtDate(r.next_schedule)}</span>` : ''}
-        <button onclick="openEditRecord('${recId}')" style="margin-left:auto;padding:4px 12px;
-          background:var(--accent);color:#001A2E;border:none;border-radius:6px;
-          font-size:11px;font-weight:700;cursor:pointer;">✏️ Edit</button>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button onclick="openEditRecord('${recId}')"
+            style="padding:4px 12px;background:var(--accent);color:#001A2E;
+                   border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">
+            ✏️ Edit
+          </button>
+          <button onclick="confirmDeleteRecord('${recId}','${(r.title||'').replace(/'/g,'\'')}')"
+            style="padding:4px 12px;background:rgba(231,76,60,.15);color:var(--danger);
+                   border:1px solid var(--danger);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">
+            🗑️ Hapus
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -2457,9 +2446,6 @@ function renderDevices(list) {
         <button onclick="openDeviceHistoryFromList('${id}')"
           style="padding:6px 12px;background:var(--accent-glow);border:1px solid var(--accent);border-radius:7px;
                  color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;">📋 History</button>
-        <button onclick="confirmDeleteDevice('${id}','${esc(d.name||'')}')"
-          style="padding:6px 12px;background:rgba(231,76,60,.15);border:1px solid var(--danger);border-radius:7px;
-                 color:var(--danger);font-size:11px;font-weight:600;cursor:pointer;">🗑️ Hapus</button>
       </div>
     </div>`;
   }).join('');
@@ -3082,94 +3068,42 @@ window.addEventListener('resize', () => {
   }
 });
 
-// ── DELETE DEVICE ──
-let _delDeviceId   = null;
-let _delDeviceName = null;
+// ── DELETE RECORD (PM/CM) ──
+let _delRecordId   = null;
+let _delRecordName = null;
 
-function confirmDeleteDevice(id, name) {
-  _delDeviceId   = id;
-  _delDeviceName = name;
-  document.getElementById('del-dev-name').textContent = name || 'Perangkat ini';
-  document.getElementById('modal-del-device').style.display = 'flex';
+function confirmDeleteRecord(id, name) {
+  _delRecordId   = id;
+  _delRecordName = name;
+  document.getElementById('del-rec-name').textContent = name || 'Record ini';
+  document.getElementById('modal-del-record').style.display = 'flex';
 }
-
-function closeDeleteDevice() {
-  document.getElementById('modal-del-device').style.display = 'none';
-  _delDeviceId   = null;
-  _delDeviceName = null;
+function closeDeleteRecord() {
+  document.getElementById('modal-del-record').style.display = 'none';
+  _delRecordId = null; _delRecordName = null;
 }
-
-async function doDeleteDevice() {
-  if (!_delDeviceId) return;
-  const btn = document.getElementById('btn-del-device-ok');
-  btn.disabled = true;
-
+async function doDeleteRecord() {
+  if (!_delRecordId) return;
+  const btn = document.getElementById('btn-del-record-ok');
+  btn.disabled = true; btn.textContent = 'Menghapus...';
   try {
-    const devTableId = getTableId('devices')     || getTableId('02_devices');
     const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
-
-    // ── STEP 1: Ambil semua record PM/CM milik perangkat ini ──
-    btn.textContent = 'Mencari record PM/CM...';
-    let allRecs = [];
-    let page    = 0;
-    const limit = 100;
-    while (true) {
-      const url = `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}`
-        + `?where=${encodeURIComponent('(device_id,eq,' + _delDeviceId + ')')}`
-        + `&limit=${limit}&offset=${page * limit}&fields=Id,id`;
-      const res = await fetch(url, {
-        headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' }
-      });
-      if (!res.ok) throw new Error('Gagal ambil records: HTTP ' + res.status);
-      const data = await res.json();
-      const rows = data.list || [];
-      allRecs = allRecs.concat(rows);
-      if (rows.length < limit) break;
-      page++;
-    }
-
-    // ── STEP 2: Hapus semua record PM/CM satu per satu ──
-    const total = allRecs.length;
-    let deleted  = 0;
-    for (const rec of allRecs) {
-      const recId = rec.Id || rec.id;
-      btn.textContent = `Hapus record ${++deleted}/${total}...`;
-      const res = await fetch(
-        `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}/${recId}`,
-        { method: 'DELETE', headers: { 'xc-token': CFG.TOKEN, 'ngrok-skip-browser-warning': '1' } }
-      );
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(`Gagal hapus record ID ${recId}: ${err}`);
-      }
-    }
-
-    // ── STEP 3: Hapus perangkat ──
-    btn.textContent = 'Menghapus perangkat...';
     const res = await fetch(
-      `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devTableId}/${_delDeviceId}`,
-      { method: 'DELETE', headers: { 'xc-token': CFG.TOKEN, 'ngrok-skip-browser-warning': '1' } }
+      `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}/${_delRecordId}`,
+      { method:'DELETE', headers:{'xc-token':CFG.TOKEN,'Content-Type':'application/json','ngrok-skip-browser-warning':'1'} }
     );
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Gagal hapus perangkat: HTTP ${res.status}: ${err}`);
-    }
-
-    toast(`✓ Perangkat "${_delDeviceName}" & ${total} record PM/CM berhasil dihapus`);
-    closeDeleteDevice();
-    setTimeout(() => loadDevices(), 500);
-
+    if (!res.ok) { const e=await res.text(); throw new Error(`API ${res.status}: ${e}`); }
+    toast(`✓ Record "${_delRecordName}" berhasil dihapus`);
+    closeDeleteRecord();
+    setTimeout(() => { if (currentDevice) loadDeviceRecords(); else loadAllHistory(); }, 400);
   } catch(e) {
     toast('Gagal: ' + e.message, true);
-    btn.disabled = false;
-    btn.textContent = 'Ya, Hapus';
+    btn.disabled = false; btn.textContent = 'Ya, Hapus';
   }
 }
-
-// Close delete modal on overlay click
 document.addEventListener('click', function(e) {
-  const modal = document.getElementById('modal-del-device');
-  if (modal && e.target === modal) closeDeleteDevice();
+  const m = document.getElementById('modal-del-record');
+  if (m && e.target === m) closeDeleteRecord();
 });
 
 // ── UTILS ──
