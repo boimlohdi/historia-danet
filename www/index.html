@@ -864,14 +864,14 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
       <div class="manual-title">🔍 Cari Manual</div>
       <button onclick="closeManual()" style="font-size:22px;background:none;border:none;cursor:pointer;color:var(--text-2)">✕</button>
     </div>
-    <p style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Masukkan kode perangkat jika QR tidak terbaca</p>
+    <p style="font-size:12px;color:var(--text-2);margin-bottom:4px;">Cari berdasarkan kode atau nama perangkat</p>
 
     <div class="field-group">
       <div class="field-label">KODE PERANGKAT</div>
       <div class="field-input">
         <span class="field-icon">🔍</span>
-        <input id="inp-code" type="text" placeholder="HDN-2024-A12"
-          style="text-transform:uppercase;letter-spacing:1px;font-weight:600;">
+        <input id="inp-code" type="text" placeholder="Kode atau nama perangkat..."
+          style="font-weight:600;" oninput="filterQuickDevices(this.value)">
       </div>
     </div>
     <button class="btn btn-accent" onclick="searchByCode()">CARI PERANGKAT</button>
@@ -2076,26 +2076,120 @@ async function loadQuickDevices() {
   const devId = getTableId('devices') || getTableId('02_devices');
   if (!devId) return;
   try {
-    const data = await api(`/api/v1/db/data/noco/${baseId}/${devId}?limit=10&sort=device_code`);
+    // Load 30 perangkat pertama sebagai tampilan awal
+    const data = await api(`/api/v1/db/data/noco/${baseId}/${devId}?limit=30&sort=device_code`);
     allDevices = data?.list || [];
-    const el = document.getElementById('quick-devices');
-    el.innerHTML = allDevices.map(d => `
-      <div onclick="findDevice('${d.device_code}')" style="
-        display:flex;justify-content:space-between;align-items:center;
-        background:var(--bg-card);border:1px solid var(--border);
-        border-radius:10px;padding:10px 14px;cursor:pointer;">
-        <span style="font-size:13px;font-weight:600;color:var(--accent);letter-spacing:1px;">${d.device_code}</span>
-        <span style="font-size:11px;color:var(--text-2);">${d.name}</span>
-        <span style="color:var(--text-3);">›</span>
-      </div>
-    `).join('');
+    renderQuickDevices(allDevices);
   } catch(e) {}
 }
 
 function searchByCode() {
-  const code = document.getElementById('inp-code').value.trim().toUpperCase();
-  if (!code) { toast('Masukkan kode perangkat', true); return; }
-  findDevice(code);
+  const query = document.getElementById('inp-code').value.trim();
+  if (!query) { toast('Masukkan kode atau nama perangkat', true); return; }
+  findDeviceByQuery(query);
+}
+
+// Debounce timer untuk search
+let _searchTimer = null;
+
+// Filter dengan server-side search — aman untuk 300+ perangkat
+function filterQuickDevices(kw) {
+  clearTimeout(_searchTimer);
+  if (!kw.trim()) {
+    // Kosong: tampilkan 30 pertama dari cache
+    renderQuickDevices(allDevices);
+    return;
+  }
+  // Tampilkan loading sementara menunggu
+  document.getElementById('quick-devices').innerHTML =
+    '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:12px;">Mencari...</div>';
+
+  // Debounce 400ms — query ke API setelah user berhenti mengetik
+  _searchTimer = setTimeout(() => searchDevicesAPI(kw.trim()), 400);
+}
+
+async function searchDevicesAPI(kw) {
+  const devId = getTableId('devices') || getTableId('02_devices');
+  if (!devId) return;
+  try {
+    // Query ke API: cari by device_code OR name (NocoDB tidak support OR langsung, kita paralel)
+    const q = encodeURIComponent('%' + kw + '%');
+    const [byCode, byName] = await Promise.all([
+      fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(device_code,like,%'+kw+'%)')}&limit=20&sort=device_code`, { headers: H }).then(r=>r.json()),
+      fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(name,like,%'+kw+'%)')}&limit=20&sort=device_code`, { headers: H }).then(r=>r.json()),
+    ]);
+    // Gabung & deduplicate by device_code
+    const merged = [...(byCode.list||[]), ...(byName.list||[])];
+    const seen   = new Set();
+    const result = merged.filter(d => {
+      const key = d.device_code;
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+    renderQuickDevices(result);
+  } catch(e) {
+    document.getElementById('quick-devices').innerHTML =
+      '<div style="font-size:12px;color:var(--danger);text-align:center;padding:12px;">Gagal mencari</div>';
+  }
+}
+
+function renderQuickDevices(list) {
+  const el = document.getElementById('quick-devices');
+  if (!list.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:12px;">Tidak ada perangkat yang cocok</div>';
+    return;
+  }
+  el.innerHTML = list.map(d => `
+    <div onclick="findDevice('${d.device_code}')" style="
+      display:flex;justify-content:space-between;align-items:center;
+      background:var(--bg-card);border:1px solid var(--border);
+      border-radius:10px;padding:10px 14px;cursor:pointer;">
+      <span style="font-size:13px;font-weight:600;color:var(--accent);letter-spacing:1px;">${d.device_code}</span>
+      <span style="font-size:11px;color:var(--text-2);flex:1;text-align:right;margin:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</span>
+      <span style="color:var(--text-3);">›</span>
+    </div>
+  `).join('');
+}
+
+// Cari perangkat by nama atau kode
+async function findDeviceByQuery(query) {
+  const devId = getTableId('devices') || getTableId('02_devices');
+  if (!devId) { toast('Tabel devices tidak ditemukan', true); return; }
+
+  // Coba cari di cache lokal dulu (lebih cepat)
+  if (allDevices.length) {
+    const q = query.toLowerCase();
+    const found = allDevices.find(d =>
+      (d.device_code||'').toLowerCase() === q ||
+      (d.device_code||'').toLowerCase().includes(q) ||
+      (d.name||'').toLowerCase().includes(q)
+    );
+    if (found) { findDevice(found.device_code); return; }
+  }
+
+  // Kalau tidak ada di cache, query ke API
+  toast('Mencari perangkat...');
+  try {
+    // Cari by device_code dulu
+    const byCode = await fetch(
+      `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(device_code,like,%'+query+'%)')}&limit=1`,
+      { headers: H }
+    ).then(r => r.json());
+
+    if (byCode.list?.length) { findDevice(byCode.list[0].device_code); return; }
+
+    // Kalau tidak ada, cari by name
+    const byName = await fetch(
+      `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(name,like,%'+query+'%)')}&limit=1`,
+      { headers: H }
+    ).then(r => r.json());
+
+    if (byName.list?.length) { findDevice(byName.list[0].device_code); return; }
+
+    toast(`Perangkat "${query}" tidak ditemukan`, true);
+  } catch(e) {
+    toast('Gagal mencari: ' + e.message, true);
+  }
 }
 
 async function findDevice(code) {
