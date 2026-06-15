@@ -2605,6 +2605,9 @@ function renderDevices(list) {
         <button onclick="openDeviceHistoryFromList('${id}')"
           style="padding:6px 12px;background:var(--accent-glow);border:1px solid var(--accent);border-radius:7px;
                  color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;">📋 History</button>
+        <button onclick="confirmDeleteDevice('${id}','${esc(d.name||'')}')"
+          style="padding:6px 12px;background:rgba(231,76,60,.15);border:1px solid var(--danger);border-radius:7px;
+                 color:var(--danger);font-size:11px;font-weight:600;cursor:pointer;">🗑️ Hapus</button>
       </div>
     </div>`;
   }).join('');
@@ -3507,6 +3510,63 @@ function toggleTechEdit() {
   }
 }
 
+// ── DELETE DEVICE ──
+let _delDeviceId = null, _delDeviceName = null;
+function confirmDeleteDevice(id, name) {
+  _delDeviceId = id; _delDeviceName = name;
+  document.getElementById('del-dev-name').textContent = name || 'Perangkat ini';
+  document.getElementById('modal-del-device').style.display = 'flex';
+}
+function closeDeleteDevice() {
+  document.getElementById('modal-del-device').style.display = 'none';
+  _delDeviceId = null; _delDeviceName = null;
+}
+async function doDeleteDevice() {
+  if (!_delDeviceId) return;
+  const btn = document.getElementById('btn-del-device-ok');
+  btn.disabled = true;
+  try {
+    const devTableId = getTableId('devices') || getTableId('02_devices');
+    const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
+    // Step 1: Ambil semua record PM/CM perangkat ini
+    btn.textContent = 'Mencari record PM/CM...';
+    let allRecs = [], page = 0;
+    while (true) {
+      const res = await fetch(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + recTableId +
+        '?where=' + encodeURIComponent('(device_id,eq,' + _delDeviceId + ')') +
+        '&limit=100&offset=' + (page * 100) + '&fields=Id,id', { headers: H });
+      const d = await res.json();
+      const rows = d.list || [];
+      allRecs = allRecs.concat(rows);
+      if (rows.length < 100) break;
+      page++;
+    }
+    // Step 2: Hapus semua record
+    let deleted = 0;
+    for (const rec of allRecs) {
+      const recId = rec.Id || rec.id;
+      btn.textContent = 'Hapus record ' + (++deleted) + '/' + allRecs.length + '...';
+      await fetch(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + recTableId + '/' + recId,
+        { method: 'DELETE', headers: H });
+    }
+    // Step 3: Hapus perangkat
+    btn.textContent = 'Menghapus perangkat...';
+    const res = await fetch(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + devTableId + '/' + _delDeviceId,
+      { method: 'DELETE', headers: H });
+    if (!res.ok) { const e = await res.text(); throw new Error('API ' + res.status + ': ' + e); }
+    toast('✓ Perangkat "' + _delDeviceName + '" & ' + allRecs.length + ' record berhasil dihapus');
+    closeDeleteDevice();
+    setTimeout(loadDevices, 500);
+  } catch(e) {
+    toast('Gagal: ' + e.message, true);
+    btn.disabled = false; btn.textContent = 'Ya, Hapus';
+  }
+}
+document.addEventListener('click', function(e) {
+  const m = document.getElementById('modal-del-device');
+  if (m && e.target === m) closeDeleteDevice();
+});
+
 // ── UTILS ──
 function fmtDate(d) {
   if (!d) return '-';
@@ -3528,5 +3588,33 @@ document.getElementById('inp-pwd')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
 </script>
+
+<!-- MODAL HAPUS PERANGKAT -->
+<div id="modal-del-device" style="position:fixed;inset:0;background:rgba(0,0,0,.8);
+  display:none;align-items:center;justify-content:center;z-index:400;padding:24px;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);
+    border-radius:20px;padding:24px;width:100%;max-width:360px;">
+    <div style="font-size:40px;text-align:center;margin-bottom:12px;">🗑️</div>
+    <div style="font-size:17px;font-weight:700;text-align:center;margin-bottom:8px;">Hapus Perangkat?</div>
+    <div id="del-dev-name" style="font-size:13px;font-weight:700;color:var(--danger);
+      text-align:center;padding:10px;background:rgba(231,76,60,.1);
+      border:1px solid var(--danger);border-radius:10px;margin-bottom:12px;"></div>
+    <div style="font-size:11px;color:var(--text-3);text-align:center;margin-bottom:20px;">
+      ⚠️ Perangkat beserta seluruh catatan PM/CM-nya akan dihapus permanen.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="closeDeleteDevice()"
+        style="padding:12px;background:none;border:1.5px solid var(--border);
+               color:var(--text-2);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
+        Batal
+      </button>
+      <button id="btn-del-device-ok" onclick="doDeleteDevice()"
+        style="padding:12px;background:var(--danger);color:#fff;
+               border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
+        Ya, Hapus
+      </button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
