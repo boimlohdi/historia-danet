@@ -1479,7 +1479,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 // ── CONFIG ──
 const CFG = {
   // ✅ Satu alamat proxy — HP cukup akses ini saja
-  BASE:  'https://recount-lively-splashed.ngrok-free.dev',  // Local server
+  BASE:  'https://recount-lively-splashed.ngrok-free.dev',
   // Nginx akan forward /api/ → NocoDB secara otomatis
   TOKEN: 'm3C7O-OLFIoNesNDcgYB_UQVDIfbMYLQiNo8-bSB',
   WEB:   'http://172.17.164.100',       // Windows XAMPP (diakses via proxy)
@@ -3361,53 +3361,29 @@ async function uploadPhotos(files) {
 //   thumbnails:{ tiny:{ signedPath:"dltemp/TOKEN/thumbnails/xxx/tiny.jpg" } } }
 function resolvePhotoUrl(p) {
   if (!p) return { thumb: '', full: '' };
-  const tk = '?xc-token=' + encodeURIComponent(CFG.TOKEN);
 
-  // Deteksi base untuk foto:
-  // - Kalau CFG.BASE pakai ngrok → foto juga lewat ngrok (sudah proxy ke NocoDB)
-  // - Kalau CFG.BASE pakai IP lokal → foto pakai IP:8080 langsung (bypass Nginx)
-  const isNgrok = CFG.BASE.includes('ngrok') || CFG.BASE.includes('https://');
-  const PHOTO_BASE = isNgrok ? CFG.BASE : 'http://172.17.87.135:8080';
+  // Nginx proxy /foto/ → NocoDB:8080 langsung
+  // Tidak butuh token di URL, tidak ada ngrok warning
+  // Bisa diakses via ngrok maupun IP lokal
+  const PROXY = 'http://172.17.87.135/foto/';
 
   let full = '';
-  if (p.path)            full = PHOTO_BASE + '/' + p.path + tk;
-  else if (p.signedPath) full = PHOTO_BASE + '/' + p.signedPath + tk;
-  else if (p.signedUrl)  full = p.signedUrl;
+  if (p.path)            full = PROXY + p.path;
+  else if (p.signedPath) full = PROXY + p.signedPath;
   else if (p.url)        full = p.url;
 
-  let thumb = '';
-  if (p.thumbnails && p.thumbnails.tiny) {
-    const tiny = p.thumbnails.tiny;
-    if (tiny.signedPath)     thumb = PHOTO_BASE + '/' + tiny.signedPath + tk;
-    else if (tiny.signedUrl) thumb = tiny.signedUrl;
-  }
-  if (!thumb) thumb = full;
-
-  return { thumb, full };
+  return { thumb: full, full: full };
 }
 
 // Fetch foto dengan xc-token lalu inject sebagai blob URL
 function loadPhotoBlob(url, imgEl, linkEl) {
-  // Langsung set src — token sudah ada di query param URL
-  // Tidak pakai fetch untuk hindari CORS preflight
-  imgEl.onload  = () => { if (linkEl) linkEl.href = url; };
+  // PHP proxy sudah handle auth & CORS — langsung pakai img src
+  imgEl.onload = () => { if (linkEl) linkEl.href = url; };
   imgEl.onerror = () => {
-    // Fallback: coba pakai path biasa tanpa thumbnail
-    const fallback = url.replace(/thumbnails\/[^?]+/, '').replace(/\/tiny|\/small|\/card_cover/,'');
-    if (fallback !== url) {
-      imgEl.onerror = () => {
-        imgEl.parentElement.innerHTML =
-          '<div style="width:80px;height:80px;border-radius:8px;background:var(--bg-card2);' +
-          'border:1px solid var(--border);display:flex;align-items:center;' +
-          'justify-content:center;font-size:22px;">🖼️</div>';
-      };
-      imgEl.src = fallback;
-    } else {
-      imgEl.parentElement.innerHTML =
-        '<div style="width:80px;height:80px;border-radius:8px;background:var(--bg-card2);' +
-        'border:1px solid var(--border);display:flex;align-items:center;' +
-        'justify-content:center;font-size:22px;">🖼️</div>';
-    }
+    imgEl.parentElement.innerHTML =
+      '<div style="width:80px;height:80px;border-radius:8px;background:var(--bg-card2);' +
+      'border:1px solid var(--border);display:flex;align-items:center;' +
+      'justify-content:center;font-size:22px;">🖼️</div>';
   };
   imgEl.src = url;
 }
@@ -3432,7 +3408,7 @@ function renderPhotos(photos) {
       <a id="${linkId}" href="#" target="_blank"
         style="display:block;flex-shrink:0;" title="${title}">
         <img id="${imgId}"
-          style="width:80px;height:80px;object-fit:cover;border-radius:8px;
+          style="width:160px;height:160px;object-fit:cover;border-radius:10px;
                  border:1.5px solid var(--border);background:var(--bg-card2);"
           src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
       </a>`;
