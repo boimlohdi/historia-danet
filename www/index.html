@@ -3362,9 +3362,9 @@ async function uploadPhotos(files) {
 function resolvePhotoUrl(p) {
   if (!p) return { thumb: '', full: '' };
 
-  // Nginx proxy /foto/ → NocoDB:8080 langsung
-  // Tidak butuh token di URL, tidak ada ngrok warning
-  // Bisa diakses via ngrok maupun IP lokal
+  // Foto diakses via Nginx proxy di jaringan lokal kantor
+  // Tidak perlu token, tidak ada ngrok warning
+  // Catatan: foto hanya muncul saat HP terhubung ke WiFi kantor
   const PROXY = 'http://172.17.87.135/foto/';
 
   let full = '';
@@ -3372,6 +3372,7 @@ function resolvePhotoUrl(p) {
   else if (p.signedPath) full = PROXY + p.signedPath;
   else if (p.url)        full = p.url;
 
+  // Kalau tidak bisa load (diluar jaringan), tampilkan placeholder
   return { thumb: full, full: full };
 }
 
