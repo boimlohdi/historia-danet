@@ -979,7 +979,17 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 
       <div class="field-group">
         <div class="field-label">NAMA TEKNISI *</div>
-        <div class="field-input"><input id="f-tech" type="text" placeholder="Nama teknisi"></div>
+        <div class="field-input" id="wrap-f-tech">
+          <span class="field-icon">👤</span>
+          <input id="f-tech" type="text" placeholder="Nama teknisi"
+            style="color:var(--accent);font-weight:600;">
+          <button id="btn-tech-edit" onclick="toggleTechEdit()"
+            style="font-size:10px;padding:3px 8px;background:var(--accent-glow);
+                   border:1px solid var(--accent);border-radius:5px;color:var(--accent);
+                   cursor:pointer;white-space:nowrap;font-weight:700;">
+            Ubah
+          </button>
+        </div>
       </div>
 
       <div class="field-group">
@@ -2392,7 +2402,8 @@ function gotoAddRecord() {
   document.getElementById('add-dev-code').textContent = currentDevice.device_code;
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('f-title').value  = '';
-  document.getElementById('f-tech').value   = '';
+  // Auto-fill nama teknisi dari session login
+  document.getElementById('f-tech').value   = session?.name || session?.Name || '';
   document.getElementById('f-dur').value    = '';
   document.getElementById('f-desc').value   = '';
   document.getElementById('f-findings').value = '';
@@ -2403,6 +2414,12 @@ function gotoAddRecord() {
   currentStatus = 'selesai';
   currentPrio   = 'normal';
   selectType('PM');
+  // Set field teknisi readonly by default
+  _techEditable = false;
+  const techInp = document.getElementById('f-tech');
+  const techBtn = document.getElementById('btn-tech-edit');
+  if (techInp) { techInp.readOnly = true; techInp.style.color = 'var(--accent)'; }
+  if (techBtn) { techBtn.textContent = 'Ubah'; techBtn.style.background='var(--accent-glow)'; techBtn.style.borderColor='var(--accent)'; techBtn.style.color='var(--accent)'; }
   screenStack.push('add');
   showScreen('add', false);
 }
@@ -3199,6 +3216,30 @@ document.addEventListener('click', function(e) {
   const m = document.getElementById('modal-del-record');
   if (m && e.target === m) closeDeleteRecord();
 });
+
+// ── TOGGLE EDIT NAMA TEKNISI ──
+let _techEditable = false;
+function toggleTechEdit() {
+  _techEditable = !_techEditable;
+  const inp = document.getElementById('f-tech');
+  const btn = document.getElementById('btn-tech-edit');
+  if (_techEditable) {
+    inp.readOnly = false;
+    inp.style.color = 'var(--text-1)';
+    inp.focus();
+    btn.textContent = 'Kunci';
+    btn.style.background = 'var(--cm-dim)';
+    btn.style.borderColor = 'var(--cm)';
+    btn.style.color = 'var(--cm)';
+  } else {
+    inp.readOnly = true;
+    inp.style.color = 'var(--accent)';
+    btn.textContent = 'Ubah';
+    btn.style.background = 'var(--accent-glow)';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+  }
+}
 
 // ── UTILS ──
 function fmtDate(d) {
