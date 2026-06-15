@@ -1479,7 +1479,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 // ── CONFIG ──
 const CFG = {
   // ✅ Satu alamat proxy — HP cukup akses ini saja
-  BASE:  'http://172.17.87.135',  // Local server
+  BASE:  'https://recount-lively-splashed.ngrok-free.dev',  // Local server
   // Nginx akan forward /api/ → NocoDB secara otomatis
   TOKEN: 'm3C7O-OLFIoNesNDcgYB_UQVDIfbMYLQiNo8-bSB',
   WEB:   'http://172.17.164.100',       // Windows XAMPP (diakses via proxy)
@@ -3361,21 +3361,24 @@ async function uploadPhotos(files) {
 //   thumbnails:{ tiny:{ signedPath:"dltemp/TOKEN/thumbnails/xxx/tiny.jpg" } } }
 function resolvePhotoUrl(p) {
   if (!p) return { thumb: '', full: '' };
-  // Akses NocoDB langsung di port 8080, bypass Nginx/Traefik
-  // karena proxy di port 80 intercept semua request ke Historia app
-  const NOCODB = 'http://172.17.87.135:8080';
   const tk = '?xc-token=' + encodeURIComponent(CFG.TOKEN);
 
+  // Deteksi base untuk foto:
+  // - Kalau CFG.BASE pakai ngrok → foto juga lewat ngrok (sudah proxy ke NocoDB)
+  // - Kalau CFG.BASE pakai IP lokal → foto pakai IP:8080 langsung (bypass Nginx)
+  const isNgrok = CFG.BASE.includes('ngrok') || CFG.BASE.includes('https://');
+  const PHOTO_BASE = isNgrok ? CFG.BASE : 'http://172.17.87.135:8080';
+
   let full = '';
-  if (p.path)            full = NOCODB + '/' + p.path + tk;
-  else if (p.signedPath) full = NOCODB + '/' + p.signedPath + tk;
+  if (p.path)            full = PHOTO_BASE + '/' + p.path + tk;
+  else if (p.signedPath) full = PHOTO_BASE + '/' + p.signedPath + tk;
   else if (p.signedUrl)  full = p.signedUrl;
   else if (p.url)        full = p.url;
 
   let thumb = '';
   if (p.thumbnails && p.thumbnails.tiny) {
     const tiny = p.thumbnails.tiny;
-    if (tiny.signedPath)     thumb = NOCODB + '/' + tiny.signedPath + tk;
+    if (tiny.signedPath)     thumb = PHOTO_BASE + '/' + tiny.signedPath + tk;
     else if (tiny.signedUrl) thumb = tiny.signedUrl;
   }
   if (!thumb) thumb = full;
