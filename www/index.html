@@ -2326,6 +2326,7 @@ function buildRecCard(r) {
   if (recId) window._recCache[String(recId)] = r;
 
 
+
   const infoBox = (label, value, color) => value ? `
     <div style="background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:6px;">
       <div style="font-size:9px;color:${color || 'var(--text-3)'};font-weight:700;letter-spacing:1px;text-transform:uppercase;">${label}</div>
@@ -3355,25 +3356,28 @@ async function uploadPhotos(files) {
 
 // Tampilkan foto di record card
 // Format NocoDB Attachment:
-// { path, title, mimetype, size, thumbnails: { tiny: { signedPath } } }
+// { path:"download/maintenance/xxx.jpg",
+//   signedPath:"dltemp/TOKEN/xxx.jpg",
+//   thumbnails:{ tiny:{ signedPath:"dltemp/TOKEN/thumbnails/xxx/tiny.jpg" } } }
 function resolvePhotoUrl(p) {
   if (!p) return { thumb: '', full: '' };
 
-  // URL penuh untuk buka foto
+  // Full URL: pakai signedPath jika ada (sudah include token auth)
+  // signedPath format: "dltemp/TOKEN/.../filename.jpg" → BASE/dltemp/TOKEN/.../filename.jpg
   let full = '';
-  if (p.signedUrl)  full = p.signedUrl;
-  else if (p.url)   full = p.url;
-  else if (p.path)  full = CFG.BASE + '/api/v1/db/storage/upload/' + p.path;
+  if (p.signedPath)     full = CFG.BASE + '/' + p.signedPath;
+  else if (p.signedUrl) full = p.signedUrl;
+  else if (p.url)       full = p.url;
+  else if (p.path)      full = CFG.BASE + '/' + p.path;
 
-  // Thumbnail (lebih kecil, cepat dimuat)
+  // Thumbnail: pakai tiny.signedPath
   let thumb = '';
-  if (p.thumbnails?.tiny?.signedPath) {
-    thumb = CFG.BASE + '/api/v1/db/storage/upload/' + p.thumbnails.tiny.signedPath;
-  } else if (p.thumbnails?.tiny?.signedUrl) {
-    thumb = p.thumbnails.tiny.signedUrl;
-  } else {
-    thumb = full; // fallback pakai full jika tidak ada thumbnail
+  if (p.thumbnails && p.thumbnails.tiny) {
+    const tiny = p.thumbnails.tiny;
+    if (tiny.signedPath)   thumb = CFG.BASE + '/' + tiny.signedPath;
+    else if (tiny.signedUrl) thumb = tiny.signedUrl;
   }
+  if (!thumb) thumb = full; // fallback ke full
 
   return { thumb, full };
 }
