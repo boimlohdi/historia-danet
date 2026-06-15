@@ -2325,6 +2325,7 @@ function buildRecCard(r) {
   if (!window._recCache) window._recCache = {};
   if (recId) window._recCache[String(recId)] = r;
 
+
   const infoBox = (label, value, color) => value ? `
     <div style="background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:6px;">
       <div style="font-size:9px;color:${color || 'var(--text-3)'};font-weight:700;letter-spacing:1px;text-transform:uppercase;">${label}</div>
@@ -3353,22 +3354,59 @@ async function uploadPhotos(files) {
 }
 
 // Tampilkan foto di record card
+// Format NocoDB Attachment:
+// { path, title, mimetype, size, thumbnails: { tiny: { signedPath } } }
+function resolvePhotoUrl(p) {
+  if (!p) return { thumb: '', full: '' };
+
+  // URL penuh untuk buka foto
+  let full = '';
+  if (p.signedUrl)  full = p.signedUrl;
+  else if (p.url)   full = p.url;
+  else if (p.path)  full = CFG.BASE + '/api/v1/db/storage/upload/' + p.path;
+
+  // Thumbnail (lebih kecil, cepat dimuat)
+  let thumb = '';
+  if (p.thumbnails?.tiny?.signedPath) {
+    thumb = CFG.BASE + '/api/v1/db/storage/upload/' + p.thumbnails.tiny.signedPath;
+  } else if (p.thumbnails?.tiny?.signedUrl) {
+    thumb = p.thumbnails.tiny.signedUrl;
+  } else {
+    thumb = full; // fallback pakai full jika tidak ada thumbnail
+  }
+
+  return { thumb, full };
+}
+
 function renderPhotos(photos) {
-  if (!photos || !photos.length) return '';
+  let list = photos;
+  if (!list) return '';
+  if (typeof list === 'string') {
+    try { list = JSON.parse(list); } catch { return ''; }
+  }
+  if (!Array.isArray(list) || !list.length) return '';
+
+  const items = list.map(p => {
+    const { thumb, full } = resolvePhotoUrl(p);
+    if (!full && !thumb) return '';
+    const title = p.title || p.name || 'Foto';
+    return `
+      <a href="${full||thumb}" target="_blank" style="display:block;flex-shrink:0;" title="${title}">
+        <img src="${thumb||full}"
+          style="width:80px;height:80px;object-fit:cover;border-radius:8px;
+                 border:1.5px solid var(--border);background:var(--bg-card2);"
+          onerror="this.src='${full}'"
+        >
+      </a>`;
+  }).filter(Boolean).join('');
+
+  if (!items) return '';
   return `
-    <div style="margin-top:8px;">
+    <div style="margin-top:10px;background:var(--bg-base);border:1px solid var(--border);
+                border-radius:8px;padding:10px;">
       <div style="font-size:9px;color:var(--text-3);font-weight:700;
-                  letter-spacing:1px;margin-bottom:6px;">FOTO DOKUMENTASI</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${photos.map(p => `
-          <a href="${p.url||p.signedUrl||''}" target="_blank" style="display:block;">
-            <img src="${p.url||p.signedUrl||''}"
-              style="width:72px;height:72px;object-fit:cover;border-radius:8px;
-                     border:1px solid var(--border);"
-              onerror="this.style.display='none'">
-          </a>
-        `).join('')}
-      </div>
+                  letter-spacing:1px;margin-bottom:8px;">📷 FOTO DOKUMENTASI</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">${items}</div>
     </div>`;
 }
 
