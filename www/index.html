@@ -47,6 +47,17 @@ html,body{
 button{border:none;background:none;cursor:pointer;font-family:inherit;}
 input,textarea,select{font-family:inherit;outline:none;border:none;}
 select option{ background:var(--bg-card); color:var(--text-1); }
+
+/* Sidebar nav items */
+.sb-item{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 12px;border-radius:10px;
+  font-size:13px;font-weight:500;color:var(--text-2);
+  cursor:pointer;transition:background .15s,color .15s;
+}
+.sb-item:hover{ background:var(--bg-base); color:var(--text-1); }
+.sb-item.active{ background:rgba(0,194,255,.12); color:var(--accent); font-weight:700; }
+.sb-icon{ font-size:16px; width:20px; text-align:center; }
 textarea{resize:none;}
 
 /* ═══════════════════════════════════════════
@@ -57,6 +68,87 @@ textarea{resize:none;}
   display:flex; flex-direction:column;
   max-width:480px; margin:0 auto;
   position:relative; overflow:hidden;
+}
+
+/* ═══════════════════════════════════════════
+   DESKTOP RESPONSIVE
+═══════════════════════════════════════════ */
+@media (min-width: 900px) {
+  body {
+    background: var(--bg-base);
+    display: flex;
+    align-items: stretch;
+    min-height: 100vh;
+  }
+
+  /* Sidebar kiri di desktop */
+  #desktop-sidebar {
+    display: flex !important;
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border);
+    flex-direction: column;
+    padding: 24px 0;
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    z-index: 10;
+  }
+
+  #app {
+    max-width: 100%;
+    margin-left: 240px;
+    flex: 1;
+    border-radius: 0;
+    border-left: 1px solid var(--border);
+  }
+
+  /* Content area lebih lebar */
+  .screen {
+    max-width: 100%;
+  }
+
+  /* Home screen grid di desktop */
+  .home-stats-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  /* Recent activity 2 kolom */
+  #recent-list {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* History screen 2 kolom */
+  #rec-list {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+
+  /* Device list 2 kolom */
+  #devices-list {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+
+  /* Sembunyikan bottom nav di desktop */
+  .bottom-nav {
+    display: none !important;
+  }
+
+  /* Topbar desktop */
+  .topbar {
+    padding: 16px 24px;
+  }
+
+  /* Scroll area */
+  .scroll { overflow-y: auto; }
+  .scroll-pad { padding: 20px 24px 40px; }
 }
 
 /* ═══════════════════════════════════════════
@@ -336,6 +428,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 .camera-area{
   flex:1; background:#000; position:relative;
   display:flex; align-items:center; justify-content:center; overflow:hidden;
+  min-height:300px;
 }
 #qr-video{
   width:100%; height:100%;
@@ -343,14 +436,21 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 }
 .qr-overlay{
   position:relative; z-index:2;
-  width:220px; height:220px;
+  width:260px; height:260px;
 }
 .qr-corner{
-  position:absolute; width:28px; height:28px;
+  position:absolute; width:36px; height:36px;
   border-color:var(--accent); border-style:solid;
 }
 .qr-corner.tl{ top:0;left:0;border-width:3px 0 0 3px; }
 .qr-corner.tr{ top:0;right:0;border-width:3px 3px 0 0; }
+
+/* Desktop: area scan lebih besar */
+@media (min-width:900px) {
+  .camera-area{ min-height:480px; }
+  .qr-overlay{ width:380px; height:380px; }
+  .qr-corner{ width:48px; height:48px; }
+}
 .qr-corner.bl{ bottom:0;left:0;border-width:0 0 3px 3px; }
 .qr-corner.br{ bottom:0;right:0;border-width:0 3px 3px 0; }
 .scan-line{
@@ -530,6 +630,57 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 <!-- ══════════════════════════════════════════
      APP SHELL
 ══════════════════════════════════════════ -->
+<!-- ╔══════════════════════════════════════╗
+     ║  DESKTOP SIDEBAR (hidden on mobile)  ║
+     ╚══════════════════════════════════════╝ -->
+<div id="desktop-sidebar" style="display:none;">
+  <!-- Logo -->
+  <div style="padding:0 20px 24px;border-bottom:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:36px;height:36px;background:var(--accent);border-radius:10px;
+        display:flex;align-items:center;justify-content:center;font-size:18px;">⚙️</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--text-1);letter-spacing:1px;">HISTORIA</div>
+        <div style="font-size:9px;color:var(--text-3);letter-spacing:2px;">DANET</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav items -->
+  <div style="flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:4px;">
+    <div id="sb-home" class="sb-item active" onclick="navTo('home');setSidebarActive('sb-home')">
+      <span class="sb-icon">🏠</span><span>Home</span>
+    </div>
+    <div id="sb-scan" class="sb-item" onclick="gotoScan();setSidebarActive('sb-scan')">
+      <span class="sb-icon">📷</span><span>Scan QR</span>
+    </div>
+    <div id="sb-history" class="sb-item" onclick="navTo('history');setSidebarActive('sb-history')">
+      <span class="sb-icon">📋</span><span>History</span>
+    </div>
+    <div id="sb-devices" class="sb-item" style="display:none;" onclick="navTo('devices');setSidebarActive('sb-devices')">
+      <span class="sb-icon">⚙️</span><span>Perangkat</span>
+    </div>
+  </div>
+
+  <!-- User info & logout -->
+  <div style="padding:16px 12px;border-top:1px solid var(--border);">
+    <div id="sb-user" style="display:flex;align-items:center;gap:10px;padding:10px;
+      background:var(--bg-base);border-radius:10px;margin-bottom:8px;">
+      <div id="sb-avatar" style="width:32px;height:32px;background:var(--accent);
+        border-radius:8px;display:flex;align-items:center;justify-content:center;
+        font-size:14px;font-weight:700;color:#001A2E;">A</div>
+      <div style="flex:1;min-width:0;">
+        <div id="sb-name" style="font-size:12px;font-weight:600;color:var(--text-1);
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">User</div>
+        <div id="sb-role-badge" style="font-size:9px;color:var(--text-3);">-</div>
+      </div>
+    </div>
+    <div class="sb-item" onclick="doLogout()" style="color:var(--danger);">
+      <span class="sb-icon">🚪</span><span>Keluar</span>
+    </div>
+  </div>
+</div>
+
 <div id="app">
 
 <!-- ╔══════════════════════════════════════╗
@@ -570,7 +721,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
       <button class="btn btn-accent" id="btn-login" onclick="doLogin()">MASUK</button>
 
       <div class="server-info">
-        🔀 Proxy: <strong>ngrok</strong> &nbsp;·&nbsp; 🗄️ DB: <strong>NocoDB via /api/</strong>
+        🔀 Proxy: <strong>172.17.87.135</strong> &nbsp;·&nbsp; 🗄️ DB: <strong>NocoDB via /api/</strong>
       </div>
 
       <div style="text-align:center;font-size:11px;color:var(--text-3)">
@@ -691,27 +842,28 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
   </div>
 
   <!-- Kontrol bawah: Flash + tombol beralih ke manual -->
-  <div class="scan-controls-bar" id="scan-controls-bar">
+  <div class="scan-controls-bar">
     <div class="scan-ctrl" onclick="toggleFlash()">
       <div class="scan-ctrl-icon" id="flash-icon">💡</div>
       <div class="scan-ctrl-label">Flash</div>
     </div>
+    <div class="scan-ctrl" onclick="switchCamera()">
+      <div class="scan-ctrl-icon" id="cam-switch-icon">🔄</div>
+      <div class="scan-ctrl-label" id="cam-switch-label">Ganti Kamera</div>
+    </div>
+    <div class="scan-ctrl" onclick="openGalleryScan()">
+      <div class="scan-ctrl-icon">🖼️</div>
+      <div class="scan-ctrl-label">Dari Foto</div>
+    </div>
     <div class="scan-ctrl" onclick="openManual()">
       <div class="scan-ctrl-icon">⌨️</div>
-      <div class="scan-ctrl-label">Input Manual</div>
+      <div class="scan-ctrl-label">Manual</div>
     </div>
   </div>
 
-  <!-- Tombol Android Scanner — muncul di atas controls bar -->
-  <div id="android-scan-bar" style="display:none;padding:12px 16px;background:var(--bg-card);
-    border-top:1px solid var(--border);">
-    <button onclick="startAndroidScan()"
-      style="width:100%;padding:14px;background:var(--accent);color:#001A2E;
-             border:none;border-radius:12px;font-size:15px;font-weight:700;
-             cursor:pointer;letter-spacing:1px;">
-      📸 &nbsp;BUKA SCANNER QR
-    </button>
-  </div>
+  <!-- Hidden input untuk upload foto -->
+  <input type="file" id="gallery-input" accept="image/*"
+    style="display:none;" onchange="scanFromGallery(this)">
 
   <!-- Manual Panel — muncul sebagai bottom sheet -->
   <div class="manual-panel" id="manual-panel">
@@ -1253,6 +1405,42 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
   </div>
 </div>
 
+
+<!-- ╔══════════════════════════════════════╗
+     ║  MODAL: KONFIRMASI HAPUS PERANGKAT  ║
+     ╚══════════════════════════════════════╝ -->
+<div id="modal-del-device" style="position:fixed;inset:0;background:rgba(0,0,0,.8);
+  display:none;align-items:center;justify-content:center;z-index:400;padding:24px;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);
+    border-radius:20px;padding:24px;width:100%;max-width:360px;">
+    <div style="font-size:40px;text-align:center;margin-bottom:12px;">🗑️</div>
+    <div style="font-size:17px;font-weight:700;text-align:center;margin-bottom:8px;">Hapus Perangkat?</div>
+    <div style="font-size:13px;color:var(--text-2);text-align:center;line-height:1.6;margin-bottom:6px;">
+      Anda akan menghapus perangkat:
+    </div>
+    <div id="del-dev-name" style="font-size:14px;font-weight:700;color:var(--danger);
+      text-align:center;padding:10px;background:rgba(231,76,60,.1);
+      border:1px solid var(--danger);border-radius:10px;margin-bottom:12px;"></div>
+    <div style="font-size:11px;color:var(--text-3);text-align:center;margin-bottom:20px;">
+      ⚠️ Tindakan ini tidak dapat dibatalkan.<br>
+      Perangkat <strong>beserta seluruh catatan PM/CM-nya</strong><br>
+      akan dihapus permanen dari database.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="closeDeleteDevice()"
+        style="padding:12px;background:none;border:1.5px solid var(--border);
+               color:var(--text-2);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
+        Batal
+      </button>
+      <button id="btn-del-device-ok" onclick="doDeleteDevice()"
+        style="padding:12px;background:var(--danger);color:#fff;
+               border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
+        Ya, Hapus
+      </button>
+    </div>
+  </div>
+</div>
+
 </div><!-- end #app -->
 
 <script>
@@ -1264,7 +1452,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 // ── CONFIG ──
 const CFG = {
   // ✅ Satu alamat proxy — HP cukup akses ini saja
-  BASE:  'https://recount-lively-splashed.ngrok-free.dev', // ngrok tunnel
+  BASE:  'http://172.17.87.135',  // Local server
   // Nginx akan forward /api/ → NocoDB secara otomatis
   TOKEN: 'm3C7O-OLFIoNesNDcgYB_UQVDIfbMYLQiNo8-bSB',
   WEB:   'http://172.17.164.100',       // Windows XAMPP (diakses via proxy)
@@ -1541,6 +1729,9 @@ async function loadHomeData() {
   const isAdmin = role === 'admin';
   const isSL    = role === 'shift_leader';
 
+  // Init desktop sidebar
+  initDesktopSidebar();
+
   document.getElementById('home-avatar').textContent = name.charAt(0).toUpperCase();
 
   const roleInfo = {
@@ -1620,74 +1811,92 @@ function getTableId(keyword) {
 function gotoScan() {
   screenStack = [...screenStack.filter(s => s !== 'scan'), 'scan'];
   showScreen('scan', false);
+  // Tutup manual panel dulu, mulai dengan kamera
   document.getElementById('manual-panel').classList.remove('show');
+  startCamera();
   loadQuickDevices();
-
-  // Jika di Android APK, pakai native ZXing scanner
-  if (window.AndroidQR) {
-    triggerAndroidScan();
-  } else {
-    startCamera();
-  }
 }
 
+// ── CAMERA MANAGEMENT ──────────────────────────────
+let currentFacingMode = 'environment'; // default kamera belakang
+
 async function startCamera() {
-  // Jika di Android APK dengan native scanner, skip WebView camera
-  if (window.AndroidQR) {
-    document.getElementById('scan-status').innerHTML =
-      '<div class="scan-pulse"></div><span>Tap untuk scan QR Code</span>';
-    return;
-  }
+  const statusEl = document.getElementById('scan-status');
 
   try {
-    videoStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-    });
+    // Coba kamera belakang dulu, fallback ke kamera manapun
+    let constraints;
+    try {
+      constraints = { video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } } };
+      videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch {
+      // Fallback: kamera manapun yang tersedia
+      constraints = { video: true };
+      videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    }
+
     const vid = document.getElementById('qr-video');
     vid.srcObject = videoStream;
     await vid.play();
 
-    document.getElementById('scan-status').innerHTML =
-      '<div class="scan-pulse"></div><span>Memuat scanner...</span>';
+    // Update label kamera
+    const lbl = document.getElementById('cam-switch-label');
+    if (lbl) lbl.textContent = currentFacingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang';
 
-    // Cek Android native scanner
-    if (window.AndroidQR) {
-      // Stop WebView camera DULU sebelum buka native scanner
-      stopCamera();
-      document.getElementById('scan-status').innerHTML =
-        '<div class="scan-pulse"></div><span>Membuka scanner...</span>';
-      window.onAndroidQRResult = function(code) {
-        document.getElementById('scan-status').innerHTML =
-          '<div class="scan-pulse" style="background:var(--pm)"></div><span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
-        setTimeout(() => findDevice(code), 300);
-      };
-      // Tunggu kamera WebView benar-benar released
-      setTimeout(() => window.AndroidQR.startScan(), 1500);
-      return;
-    }
-    document.getElementById('scan-status').innerHTML =
+    if (statusEl) statusEl.innerHTML =
       '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
 
-    // Deteksi apakah jalan di Capacitor/WebView atau browser biasa
-    const isCapacitor = window.Capacitor !== undefined;
-
-    if (!isCapacitor && 'BarcodeDetector' in window) {
-      // Browser native dengan BarcodeDetector (Chrome Android)
+    // Pilih metode scan — utamakan BarcodeDetector
+    if ('BarcodeDetector' in window) {
       try {
         new BarcodeDetector({ formats: ['qr_code'] });
+        toast('Scanner: BarcodeDetector aktif ✅');
         startQRScanNative();
-      } catch {
-        startQRScanInline();
+      } catch(e) {
+        toast('BarcodeDetector error, pakai Canvas');
+        startQRScanCanvas();
       }
     } else {
-      // Capacitor WebView atau browser tanpa BarcodeDetector
+      toast('Pakai Canvas scanner (jsQR)');
       startQRScanInline();
     }
+
   } catch(e) {
-    document.getElementById('scan-status').innerHTML =
-      '<span style="color:#F39C12">⚠ Kamera tidak tersedia</span>';
-    setTimeout(() => openManual(), 800);
+    console.log('Camera error:', e.name, e.message);
+    let msg = '';
+    if (e.name === 'NotAllowedError') {
+      msg = `<div style="text-align:center;padding:16px;">
+        <div style="font-size:32px;margin-bottom:8px;">🚫</div>
+        <div style="color:#F39C12;font-weight:700;margin-bottom:8px;">Izin Kamera Ditolak</div>
+        <div style="font-size:11px;color:var(--text-2);line-height:1.5;">
+          Klik ikon 🔒 di address bar browser lalu izinkan akses kamera
+        </div>
+      </div>`;
+    } else {
+      msg = `<div style="text-align:center;padding:16px;">
+        <div style="font-size:32px;margin-bottom:8px;">⚠️</div>
+        <div style="color:#F39C12;font-weight:700;margin-bottom:8px;">Kamera Tidak Tersedia</div>
+        <div style="font-size:11px;color:var(--text-2);">Gunakan tombol "Dari Foto" untuk scan dari gambar.</div>
+      </div>`;
+    }
+    const camArea = document.getElementById('camera-area');
+    if (camArea) camArea.innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;">${msg}</div>`;
+    setTimeout(() => openManual(), 2000);
   }
+}
+
+async function switchCamera() {
+  // Toggle antara kamera depan dan belakang
+  currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+  const lbl  = document.getElementById('cam-switch-label');
+  const icon = document.getElementById('cam-switch-icon');
+  if (lbl)  lbl.textContent  = currentFacingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang';
+  if (icon) icon.textContent = currentFacingMode === 'environment' ? '🔄' : '🤳';
+
+  // Restart kamera dengan mode baru
+  stopCamera();
+  await new Promise(r => setTimeout(r, 300));
+  startCamera();
 }
 
 // ── Metode 1: BarcodeDetector API (native Chrome Android ≥ v83) ──
@@ -1703,12 +1912,7 @@ function startQRScanNative() {
         const codes = await detector.detect(vid);
         if (codes.length > 0 && codes[0].rawValue) {
           active = false;
-          const result = codes[0].rawValue;
-          document.getElementById('scan-status').innerHTML =
-            '<div class="scan-pulse" style="background:var(--pm)"></div>' +
-            '<span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
-          stopCamera();
-          setTimeout(() => findDevice(result), 300);
+          onQRFound(codes[0].rawValue);
           return;
         }
       }
@@ -1716,9 +1920,9 @@ function startQRScanNative() {
     if (active) qrScanner = setTimeout(tick, 150);
   }
 
-  // Mulai setelah video benar-benar siap
   vid.addEventListener('playing', () => { if (active) tick(); }, { once: true });
   if (vid.readyState >= 2) tick();
+  else setTimeout(tick, 800);
 }
 
 // ── Metode 2: jsQR via canvas ──
@@ -1800,28 +2004,25 @@ function startQRScanInline() {
   // Init BarcodeDetector
   try { window._bd = new BarcodeDetector({ formats: ['qr_code'] }); } catch {}
 
-  // Load jsQR dari multiple sumber
+  // Load jsQR — coba lokal dulu, lalu CDN
   if (!window.jsQR) {
     const sources = [
+      '/jsqr.min.js',              // Root via Nginx
+      '/historia/jsqr.min.js',     // XAMPP path
+      'jsqr.min.js',               // Relative
       'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js',
       'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js',
-      'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
     ];
     let idx = 0;
-    function tryLoad() {
-      if (idx >= sources.length) {
-        console.log('jsQR: semua CDN gagal, coba BarcodeDetector saja');
-        // Coba paksa BarcodeDetector sebagai fallback terakhir
-        if ('BarcodeDetector' in window) startQRScanNative();
-        return;
-      }
+    function tryNextSrc() {
+      if (idx >= sources.length) return;
       const s = document.createElement('script');
       s.src = sources[idx++];
-      s.onload = () => console.log('jsQR loaded from', s.src);
-      s.onerror = tryLoad;
+      s.onload = () => console.log('jsQR loaded:', s.src);
+      s.onerror = tryNextSrc;
       document.head.appendChild(s);
     }
-    tryLoad();
+    tryNextSrc();
   }
 
   vid.addEventListener('playing', () => { if (active) tick(); }, { once: true });
@@ -2256,6 +2457,9 @@ function renderDevices(list) {
         <button onclick="openDeviceHistoryFromList('${id}')"
           style="padding:6px 12px;background:var(--accent-glow);border:1px solid var(--accent);border-radius:7px;
                  color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;">📋 History</button>
+        <button onclick="confirmDeleteDevice('${id}','${esc(d.name||'')}')"
+          style="padding:6px 12px;background:rgba(231,76,60,.15);border:1px solid var(--danger);border-radius:7px;
+                 color:var(--danger);font-size:11px;font-weight:600;cursor:pointer;">🗑️ Hapus</button>
       </div>
     </div>`;
   }).join('');
@@ -2429,58 +2633,111 @@ document.getElementById('modal-device')?.addEventListener('click', function(e) {
   if (e.target === this) closeDeviceModal();
 });
 
-// ── Android Native QR Scanner ──────────────────────
-function triggerAndroidScan() {
-  window._androidScanActive = false;
-  window.onAndroidQRResult  = null;
-
-  // Sembunyikan controls bar biasa, tampilkan tombol scan Android
-  const ctrlBar    = document.getElementById('scan-controls-bar');
-  const androidBar = document.getElementById('android-scan-bar');
-  if (ctrlBar)    ctrlBar.style.display    = 'none';
-  if (androidBar) androidBar.style.display = 'block';
-
-  // Update camera area jadi placeholder
-  const cameraEl = document.getElementById('camera-area');
-  if (cameraEl) {
-    cameraEl.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;
-        justify-content:center;height:100%;gap:16px;">
-        <div style="width:180px;height:180px;border:3px solid var(--accent);
-          border-radius:16px;display:flex;align-items:center;justify-content:center;
-          background:rgba(0,194,255,0.05);">
-          <div style="font-size:64px;">📷</div>
-        </div>
-        <div style="font-size:12px;color:var(--text-2);text-align:center;padding:0 32px;">
-          Tap tombol di bawah untuk membuka scanner QR
-        </div>
-      </div>`;
+// ── SCAN DARI GALERI/FOTO ──────────────────────────
+function openGalleryScan() {
+  const input = document.getElementById('gallery-input');
+  if (input) {
+    input.value = ''; // reset agar bisa pilih file sama
+    input.click();
   }
 }
 
-function startAndroidScan() {
-  if (window._androidScanActive) return;
-  window._androidScanActive = true;
+async function scanFromGallery(input) {
+  if (!input.files || !input.files[0]) return;
 
+  const file = input.files[0];
   const statusEl = document.getElementById('scan-status');
   if (statusEl) statusEl.innerHTML =
-    '<div class="scan-pulse"></div><span>Membuka scanner...</span>';
-
-  window.onAndroidQRResult = function(code) {
-    window._androidScanActive = false;
-    window.onAndroidQRResult  = null;
-    if (statusEl) statusEl.innerHTML =
-      '<div class="scan-pulse" style="background:var(--pm)"></div>' +
-      '<span style="color:var(--pm)">✓ QR Terdeteksi!</span>';
-    setTimeout(() => findDevice(code), 500);
-  };
+    '<div class="scan-pulse"></div><span>Membaca QR dari foto...</span>';
 
   try {
-    window.AndroidQR.startScan();
+    // Buat image dari file
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = async function() {
+      URL.revokeObjectURL(url);
+
+      // Gambar ke canvas
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      let found = false;
+
+      // Coba BarcodeDetector dulu (Chrome desktop support)
+      if ('BarcodeDetector' in window) {
+        try {
+          const detector = new BarcodeDetector({ formats: ['qr_code'] });
+          const codes    = await detector.detect(img);
+          if (codes.length > 0 && codes[0].rawValue) {
+            found = true;
+            onQRFromGallery(codes[0].rawValue);
+            return;
+          }
+        } catch {}
+      }
+
+      // Fallback: jsQR via canvas
+      if (window.jsQR) {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code    = jsQR(imgData.data, imgData.width, imgData.height, {
+          inversionAttempts: 'attemptBoth'
+        });
+        if (code && code.data) {
+          found = true;
+          onQRFromGallery(code.data);
+          return;
+        }
+      }
+
+      // Load jsQR dari server lokal
+      if (statusEl) statusEl.innerHTML =
+        '<div class="scan-pulse"></div><span>Memuat decoder QR...</span>';
+      const sources2 = ['/jsqr.min.js', '/historia/jsqr.min.js', 'jsqr.min.js'];
+      let loaded = false;
+      for (const src of sources2) {
+        if (loaded) break;
+        await new Promise((resolve) => {
+          const s = document.createElement('script');
+          s.src = src;
+          s.onload = () => { loaded = true; resolve(); };
+          s.onerror = () => resolve();
+          document.head.appendChild(s);
+        });
+      }
+      if (!window.jsQR) {
+        toast('Gagal load decoder', true);
+        if (statusEl) statusEl.innerHTML =
+          '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
+        return;
+      }
+
+      if (!found) {
+        toast('QR Code tidak ditemukan di foto ini', true);
+        if (statusEl) statusEl.innerHTML =
+          '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
+      }
+    };
+
+    img.onerror = () => toast('Gagal membaca foto', true);
+    img.src = url;
+
   } catch(e) {
-    window._androidScanActive = false;
-    toast('Gagal membuka scanner: ' + e.message, true);
+    toast('Error: ' + e.message, true);
   }
+}
+
+function onQRFromGallery(code) {
+  const statusEl = document.getElementById('scan-status');
+  if (statusEl) statusEl.innerHTML =
+    '<div class="scan-pulse" style="background:var(--pm)"></div>' +
+    '<span style="color:var(--pm)">✓ QR Ditemukan di Foto!</span>';
+  stopCamera();
+  toast('✓ QR Code: ' + code);
+  setTimeout(() => findDevice(code), 500);
 }
 // Pakai library qrcode.js via CDN (pure JS, no canvas API issues)
 
@@ -2774,6 +3031,145 @@ async function saveEditRecord() {
 // Close modal on overlay click
 document.getElementById('modal-edit-rec')?.addEventListener('click', function(e) {
   if (e.target === this) closeEditRecord();
+});
+
+// ── DESKTOP SIDEBAR ────────────────────────────────
+function initDesktopSidebar() {
+  if (window.innerWidth < 900) return;
+
+  const sidebar = document.getElementById('desktop-sidebar');
+  if (!sidebar) return;
+  sidebar.style.display = 'flex';
+
+  // Update user info di sidebar
+  if (session) {
+    const name = session.name || 'User';
+    const role = session.role || '';
+    const roleMap = { admin:'Administrator', shift_leader:'Shift Leader', teknisi:'Teknisi' };
+    document.getElementById('sb-avatar').textContent = name.charAt(0).toUpperCase();
+    document.getElementById('sb-name').textContent   = name;
+    document.getElementById('sb-role-badge').textContent = roleMap[role] || role;
+
+    // Tampilkan menu Perangkat hanya untuk admin
+    if (role === 'admin') {
+      document.getElementById('sb-devices').style.display = 'flex';
+    }
+  }
+}
+
+function setSidebarActive(id) {
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function doLogout() {
+  localStorage.removeItem('hd_session');
+  session = null;
+  showScreen('login', false);
+  // Reset sidebar
+  document.getElementById('desktop-sidebar').style.display = 'none';
+}
+
+// Init sidebar saat resize
+window.addEventListener('resize', () => {
+  const sidebar = document.getElementById('desktop-sidebar');
+  if (!sidebar) return;
+  if (window.innerWidth >= 900 && session) {
+    initDesktopSidebar();
+  } else if (window.innerWidth < 900) {
+    sidebar.style.display = 'none';
+  }
+});
+
+// ── DELETE DEVICE ──
+let _delDeviceId   = null;
+let _delDeviceName = null;
+
+function confirmDeleteDevice(id, name) {
+  _delDeviceId   = id;
+  _delDeviceName = name;
+  document.getElementById('del-dev-name').textContent = name || 'Perangkat ini';
+  document.getElementById('modal-del-device').style.display = 'flex';
+}
+
+function closeDeleteDevice() {
+  document.getElementById('modal-del-device').style.display = 'none';
+  _delDeviceId   = null;
+  _delDeviceName = null;
+}
+
+async function doDeleteDevice() {
+  if (!_delDeviceId) return;
+  const btn = document.getElementById('btn-del-device-ok');
+  btn.disabled = true;
+
+  try {
+    const devTableId = getTableId('devices')     || getTableId('02_devices');
+    const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
+
+    // ── STEP 1: Ambil semua record PM/CM milik perangkat ini ──
+    btn.textContent = 'Mencari record PM/CM...';
+    let allRecs = [];
+    let page    = 0;
+    const limit = 100;
+    while (true) {
+      const url = `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}`
+        + `?where=${encodeURIComponent('(device_id,eq,' + _delDeviceId + ')')}`
+        + `&limit=${limit}&offset=${page * limit}&fields=Id,id`;
+      const res = await fetch(url, {
+        headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' }
+      });
+      if (!res.ok) throw new Error('Gagal ambil records: HTTP ' + res.status);
+      const data = await res.json();
+      const rows = data.list || [];
+      allRecs = allRecs.concat(rows);
+      if (rows.length < limit) break;
+      page++;
+    }
+
+    // ── STEP 2: Hapus semua record PM/CM satu per satu ──
+    const total = allRecs.length;
+    let deleted  = 0;
+    for (const rec of allRecs) {
+      const recId = rec.Id || rec.id;
+      btn.textContent = `Hapus record ${++deleted}/${total}...`;
+      const res = await fetch(
+        `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}/${recId}`,
+        { method: 'DELETE', headers: { 'xc-token': CFG.TOKEN, 'ngrok-skip-browser-warning': '1' } }
+      );
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Gagal hapus record ID ${recId}: ${err}`);
+      }
+    }
+
+    // ── STEP 3: Hapus perangkat ──
+    btn.textContent = 'Menghapus perangkat...';
+    const res = await fetch(
+      `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devTableId}/${_delDeviceId}`,
+      { method: 'DELETE', headers: { 'xc-token': CFG.TOKEN, 'ngrok-skip-browser-warning': '1' } }
+    );
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Gagal hapus perangkat: HTTP ${res.status}: ${err}`);
+    }
+
+    toast(`✓ Perangkat "${_delDeviceName}" & ${total} record PM/CM berhasil dihapus`);
+    closeDeleteDevice();
+    setTimeout(() => loadDevices(), 500);
+
+  } catch(e) {
+    toast('Gagal: ' + e.message, true);
+    btn.disabled = false;
+    btn.textContent = 'Ya, Hapus';
+  }
+}
+
+// Close delete modal on overlay click
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('modal-del-device');
+  if (modal && e.target === modal) closeDeleteDevice();
 });
 
 // ── UTILS ──
