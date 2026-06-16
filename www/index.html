@@ -2870,10 +2870,16 @@ function loadQRLib() {
 async function generateQRToCanvas(canvasId, text, size = 180) {
   await loadQRLib();
   const canvas = document.getElementById(canvasId);
-  const ctx    = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Sembunyikan canvas, pakai img langsung (lebih kompatibel di mobile)
+  canvas.style.display = 'none';
+
+  // Hapus img lama kalau ada
+  const oldImg = document.getElementById(canvasId + '_img');
+  if (oldImg) oldImg.remove();
 
   const tempDiv = document.createElement('div');
+  tempDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
   document.body.appendChild(tempDiv);
 
   return new Promise((resolve) => {
@@ -2886,24 +2892,31 @@ async function generateQRToCanvas(canvasId, text, size = 180) {
       correctLevel: QRCode.CorrectLevel.H,
     });
     setTimeout(() => {
-      const qrImg = tempDiv.querySelector('img') || tempDiv.querySelector('canvas');
-      if (qrImg) {
-        const img = new Image();
-        img.onload = () => {
-          canvas.width  = size;
-          canvas.height = size;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, size, size);
-          ctx.drawImage(img, 0, 0, size, size);
-          document.body.removeChild(tempDiv);
-          resolve(canvas.toDataURL('image/png'));
-        };
-        img.src = qrImg.src || qrImg.toDataURL();
+      const qrCanvas = tempDiv.querySelector('canvas');
+      const qrImg    = tempDiv.querySelector('img');
+
+      let dataUrl = null;
+      if (qrCanvas) {
+        dataUrl = qrCanvas.toDataURL('image/png');
+      } else if (qrImg) {
+        dataUrl = qrImg.src;
+      }
+
+      document.body.removeChild(tempDiv);
+
+      if (dataUrl) {
+        const img = document.createElement('img');
+        img.id = canvasId + '_img';
+        img.src = dataUrl;
+        img.width  = size;
+        img.height = size;
+        img.style.cssText = 'border-radius:8px;display:block;';
+        canvas.parentNode.insertBefore(img, canvas);
+        resolve(dataUrl);
       } else {
-        document.body.removeChild(tempDiv);
         resolve(null);
       }
-    }, 200);
+    }, 300);
   });
 }
 
