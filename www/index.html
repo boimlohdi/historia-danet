@@ -3348,6 +3348,7 @@ function loadPhotoBlob(url, imgEl, linkEl) {
   imgEl.src = url;
 }
 
+let _photoUidCounter = 0;
 function renderPhotos(photos) {
   let list = photos;
   if (!list) return '';
@@ -3356,7 +3357,7 @@ function renderPhotos(photos) {
   }
   if (!Array.isArray(list) || !list.length) return '';
 
-  const uid = 'ph' + Date.now();
+  const uid = 'ph' + (++_photoUidCounter);
   const items = list.map((p, idx) => {
     const { thumb, full } = resolvePhotoUrl(p);
     if (!full && !thumb) return '';
