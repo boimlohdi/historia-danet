@@ -1480,7 +1480,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 // ── CONFIG ──
 const CFG = {
   // ✅ Satu alamat proxy — HP cukup akses ini saja
-  BASE:  'https://cookie-beside-preserve-phantom.trycloudflare.com',
+  BASE:  'https://historia.datnet.online',
   // Nginx akan forward /api/ → NocoDB secara otomatis
   TOKEN: 'm3C7O-OLFIoNesNDcgYB_UQVDIfbMYLQiNo8-bSB',
   WEB:   'http://172.17.164.100',       // Windows XAMPP (diakses via proxy)
@@ -1488,7 +1488,6 @@ const CFG = {
 const H = {
   'xc-token': CFG.TOKEN,
   'Content-Type': 'application/json',
-  'ngrok-skip-browser-warning': '1',
 };
 
 // ── STATE ──
@@ -3209,7 +3208,7 @@ async function doDeleteRecord() {
     const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
     const res = await fetch(
       `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}/${_delRecordId}`,
-      { method:'DELETE', headers:{'xc-token':CFG.TOKEN,'Content-Type':'application/json','ngrok-skip-browser-warning':'1'} }
+      { method:'DELETE', headers:{'xc-token':CFG.TOKEN,'Content-Type':'application/json'} }
     );
     if (!res.ok) { const e=await res.text(); throw new Error(`API ${res.status}: ${e}`); }
     toast(`✓ Record "${_delRecordName}" berhasil dihapus`);
@@ -3289,7 +3288,7 @@ async function uploadPhotos(files) {
       fd.append('file', file);
       const res = await fetch(`${CFG.BASE}/api/v1/db/storage/upload?path=maintenance`, {
         method: 'POST',
-        headers: { 'xc-token': CFG.TOKEN, 'ngrok-skip-browser-warning': '1' },
+        headers: { 'xc-token': CFG.TOKEN },
         body: fd,
       });
       if (!res.ok) { const t=await res.text(); throw new Error(t); }
