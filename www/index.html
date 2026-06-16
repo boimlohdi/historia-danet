@@ -2953,21 +2953,30 @@ async function saveQRToDatabase(devId, code, dataUrl) {
   }
 }
 
-function downloadQRModal() {
+function getQRDataUrl() {
+  // Coba dari img dulu (mobile), fallback ke canvas (desktop)
+  const img = document.getElementById('qr-modal-canvas_img');
+  if (img && img.src) return img.src;
   const canvas = document.getElementById('qr-modal-canvas');
-  const code   = document.getElementById('qr-modal-code').textContent;
-  const link   = document.createElement('a');
+  if (canvas) return canvas.toDataURL('image/png');
+  return null;
+}
+
+function downloadQRModal() {
+  const dataUrl = getQRDataUrl();
+  const code    = document.getElementById('qr-modal-code').textContent;
+  if (!dataUrl) { toast('QR Code belum siap', true); return; }
+  const link = document.createElement('a');
   link.download = `QR_${code}.png`;
-  link.href     = canvas.toDataURL('image/png');
+  link.href     = dataUrl;
   link.click();
   toast('✓ QR Code berhasil didownload');
 }
 
 function printQRModal() {
-  const canvas  = document.getElementById('qr-modal-canvas');
   const code    = document.getElementById('qr-modal-code').textContent;
   const name    = document.getElementById('qr-modal-device-name').textContent;
-  const dataUrl = canvas.toDataURL('image/png');
+  const dataUrl = getQRDataUrl();
   const win     = window.open('', '_blank');
   win.document.write(`
     <html><head><title>QR - ${code}</title>
