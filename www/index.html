@@ -596,9 +596,6 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 .empty-title{ font-size:16px; font-weight:700; }
 .empty-text{ font-size:13px; color:var(--text-3); }
 
-/* Server info */
-
-
 /* Row fields */
 .row-fields{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
@@ -674,6 +671,10 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
     </div>
     <div class="sb-item" onclick="doLogout()" style="color:var(--danger);">
       <span class="sb-icon">🚪</span><span>Keluar</span>
+    </div>
+    <!-- ══ COPYRIGHT ══ -->
+    <div style="text-align:center;font-size:10px;color:var(--text-3);padding:10px 0 4px;line-height:1.6;">
+      Historia Danet v1.0.0<br>© 2026 Made by <strong style="color:var(--accent);">BOIM</strong>
     </div>
   </div>
 </div>
@@ -1655,12 +1656,10 @@ function navTo(tab) {
     showScreen('home', false);
     loadHomeData();
   } else if (tab === 'history') {
-    // Semua role bisa lihat history
     screenStack = ['home', 'history'];
     showScreen('history', false);
     loadAllHistory();
   } else if (tab === 'devices') {
-    // Hanya admin
     if (!isAdmin) { toast('Akses terbatas untuk Administrator', true); return; }
     screenStack = ['home', 'devices'];
     showScreen('devices', false);
@@ -1750,13 +1749,11 @@ function doLogout() {
 async function loadHomeData() {
   if (!session) return;
 
-  // Avatar & greeting
   const name    = session.name || session.Name || 'Teknisi';
   const role    = session.role || session.Role || '';
   const isAdmin = role === 'admin';
   const isSL    = role === 'shift_leader';
 
-  // Init desktop sidebar
   initDesktopSidebar();
 
   document.getElementById('home-avatar').textContent = name.charAt(0).toUpperCase();
@@ -1781,16 +1778,11 @@ async function loadHomeData() {
   if (isAdmin) {
     if (devNav) devNav.style.display = 'flex';
     if (homeBottomNav) homeBottomNav.style.gridTemplateColumns = 'repeat(4,1fr)';
-  } else if (isSL) {
-    if (devNav) devNav.style.display = 'none';
-    if (homeBottomNav) homeBottomNav.style.gridTemplateColumns = 'repeat(3,1fr)';
   } else {
     if (devNav) devNav.style.display = 'none';
     if (homeBottomNav) homeBottomNav.style.gridTemplateColumns = 'repeat(3,1fr)';
-    // Semua role bisa lihat history — tombol tetap tampil
   }
 
-  // Stats
   try {
     const recId = getTableId('maintenance_rec') || getTableId('03_maintenance');
     if (!recId) return;
@@ -1838,26 +1830,23 @@ function getTableId(keyword) {
 function gotoScan() {
   screenStack = [...screenStack.filter(s => s !== 'scan'), 'scan'];
   showScreen('scan', false);
-  // Tutup manual panel dulu, mulai dengan kamera
   document.getElementById('manual-panel').classList.remove('show');
   startCamera();
   loadQuickDevices();
 }
 
-// ── CAMERA MANAGEMENT ──────────────────────────────
-let currentFacingMode = 'environment'; // default kamera belakang
+// ── CAMERA MANAGEMENT ──
+let currentFacingMode = 'environment';
 
 async function startCamera() {
   const statusEl = document.getElementById('scan-status');
 
   try {
-    // Coba kamera belakang dulu, fallback ke kamera manapun
     let constraints;
     try {
       constraints = { video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } } };
       videoStream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch {
-      // Fallback: kamera manapun yang tersedia
       constraints = { video: true };
       videoStream = await navigator.mediaDevices.getUserMedia(constraints);
     }
@@ -1866,14 +1855,12 @@ async function startCamera() {
     vid.srcObject = videoStream;
     await vid.play();
 
-    // Update label kamera
     const lbl = document.getElementById('cam-switch-label');
     if (lbl) lbl.textContent = currentFacingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang';
 
     if (statusEl) statusEl.innerHTML =
       '<div class="scan-pulse"></div><span>Arahkan ke QR Code perangkat...</span>';
 
-    // Pilih metode scan — utamakan BarcodeDetector
     if ('BarcodeDetector' in window) {
       try {
         new BarcodeDetector({ formats: ['qr_code'] });
@@ -1913,20 +1900,16 @@ async function startCamera() {
 }
 
 async function switchCamera() {
-  // Toggle antara kamera depan dan belakang
   currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
   const lbl  = document.getElementById('cam-switch-label');
   const icon = document.getElementById('cam-switch-icon');
   if (lbl)  lbl.textContent  = currentFacingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang';
   if (icon) icon.textContent = currentFacingMode === 'environment' ? '🔄' : '🤳';
-
-  // Restart kamera dengan mode baru
   stopCamera();
   await new Promise(r => setTimeout(r, 300));
   startCamera();
 }
 
-// ── Metode 1: BarcodeDetector API (native Chrome Android ≥ v83) ──
 function startQRScanNative() {
   const vid      = document.getElementById('qr-video');
   const detector = new BarcodeDetector({ formats: ['qr_code'] });
@@ -1952,7 +1935,6 @@ function startQRScanNative() {
   else setTimeout(tick, 800);
 }
 
-// ── Metode 2: jsQR via canvas ──
 function startQRScanCanvas() {
   const vid    = document.getElementById('qr-video');
   const canvas = document.createElement('canvas');
@@ -1986,7 +1968,6 @@ function startQRScanCanvas() {
   qrScanner = requestAnimationFrame(tick);
 }
 
-// ── Metode 3: Inline canvas scan (HTTP fallback, no CDN needed) ──
 function startQRScanInline() {
   const vid    = document.getElementById('qr-video');
   const canvas = document.createElement('canvas');
@@ -2000,7 +1981,6 @@ function startQRScanInline() {
       canvas.height = vid.videoHeight;
       ctx.drawImage(vid, 0, 0);
 
-      // Coba BarcodeDetector dulu walau di HTTP
       if (window._bd) {
         try {
           const codes = await window._bd.detect(canvas);
@@ -2012,7 +1992,6 @@ function startQRScanInline() {
         } catch {}
       }
 
-      // Fallback: jsQR jika sudah load
       if (window.jsQR) {
         try {
           const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -2028,15 +2007,13 @@ function startQRScanInline() {
     if (active) qrScanner = setTimeout(tick, 150);
   }
 
-  // Init BarcodeDetector
   try { window._bd = new BarcodeDetector({ formats: ['qr_code'] }); } catch {}
 
-  // Load jsQR — coba lokal dulu, lalu CDN
   if (!window.jsQR) {
     const sources = [
-      '/jsqr.min.js',              // Root via Nginx
-      '/historia/jsqr.min.js',     // XAMPP path
-      'jsqr.min.js',               // Relative
+      '/jsqr.min.js',
+      '/historia/jsqr.min.js',
+      'jsqr.min.js',
       'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js',
       'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js',
     ];
@@ -2064,7 +2041,6 @@ function onQRFound(result) {
   setTimeout(() => findDevice(result), 300);
 }
 
-// Alias untuk backward compatibility
 function startQRScan() { startQRScanInline(); }
 
 function stopCamera() {
@@ -2115,7 +2091,6 @@ async function loadQuickDevices() {
   const devId = getTableId('devices') || getTableId('02_devices');
   if (!devId) return;
   try {
-    // Load 30 perangkat pertama sebagai tampilan awal
     const data = await api(`/api/v1/db/data/noco/${baseId}/${devId}?limit=30&sort=device_code`);
     allDevices = data?.list || [];
     renderQuickDevices(allDevices);
@@ -2128,22 +2103,16 @@ function searchByCode() {
   findDeviceByQuery(query);
 }
 
-// Debounce timer untuk search
 let _searchTimer = null;
 
-// Filter dengan server-side search — aman untuk 300+ perangkat
 function filterQuickDevices(kw) {
   clearTimeout(_searchTimer);
   if (!kw.trim()) {
-    // Kosong: tampilkan 30 pertama dari cache
     renderQuickDevices(allDevices);
     return;
   }
-  // Tampilkan loading sementara menunggu
   document.getElementById('quick-devices').innerHTML =
     '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:12px;">Mencari...</div>';
-
-  // Debounce 400ms — query ke API setelah user berhenti mengetik
   _searchTimer = setTimeout(() => searchDevicesAPI(kw.trim()), 400);
 }
 
@@ -2151,13 +2120,10 @@ async function searchDevicesAPI(kw) {
   const devId = getTableId('devices') || getTableId('02_devices');
   if (!devId) return;
   try {
-    // Query ke API: cari by device_code OR name (NocoDB tidak support OR langsung, kita paralel)
-    const q = encodeURIComponent('%' + kw + '%');
     const [byCode, byName] = await Promise.all([
       fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(device_code,like,%'+kw+'%)')}&limit=20&sort=device_code`, { headers: H }).then(r=>r.json()),
       fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(name,like,%'+kw+'%)')}&limit=20&sort=device_code`, { headers: H }).then(r=>r.json()),
     ]);
-    // Gabung & deduplicate by device_code
     const merged = [...(byCode.list||[]), ...(byName.list||[])];
     const seen   = new Set();
     const result = merged.filter(d => {
@@ -2190,12 +2156,10 @@ function renderQuickDevices(list) {
   `).join('');
 }
 
-// Cari perangkat by nama atau kode
 async function findDeviceByQuery(query) {
   const devId = getTableId('devices') || getTableId('02_devices');
   if (!devId) { toast('Tabel devices tidak ditemukan', true); return; }
 
-  // Coba cari di cache lokal dulu (lebih cepat)
   if (allDevices.length) {
     const q = query.toLowerCase();
     const found = allDevices.find(d =>
@@ -2206,10 +2170,8 @@ async function findDeviceByQuery(query) {
     if (found) { findDevice(found.device_code); return; }
   }
 
-  // Kalau tidak ada di cache, query ke API
   toast('Mencari perangkat...');
   try {
-    // Cari by device_code dulu
     const byCode = await fetch(
       `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(device_code,like,%'+query+'%)')}&limit=1`,
       { headers: H }
@@ -2217,7 +2179,6 @@ async function findDeviceByQuery(query) {
 
     if (byCode.list?.length) { findDevice(byCode.list[0].device_code); return; }
 
-    // Kalau tidak ada, cari by name
     const byName = await fetch(
       `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(name,like,%'+query+'%)')}&limit=1`,
       { headers: H }
@@ -2267,7 +2228,6 @@ function openDeviceHistory(dev) {
   pill.className = st === 'aktif' ? 'pill pill-green' : 'pill pill-orange';
 
   currentFilter = 'Semua';
-  // Reset filter UI
   document.querySelectorAll('#filter-bar .filter-tab').forEach((t,i) => {
     t.className = i===0 ? 'filter-tab f-all' : 'filter-tab';
   });
@@ -2291,7 +2251,6 @@ async function loadDeviceRecords() {
       `/api/v1/db/data/noco/${baseId}/${recId}?where=${encodeURIComponent(where)}&sort=-work_date&limit=50`
     );
     const recs = data?.list || [];
-    // Simpan ke cache global untuk edit
     if (!window._recCache) window._recCache = {};
     recs.forEach(r => {
       const id = r.Id || r.id;
@@ -2321,11 +2280,8 @@ function buildRecCard(r) {
   const sc = statusColors[r.status] || 'var(--text-3)';
   const recId = r.Id || r.id || '';
 
-  // Simpan record ke cache untuk edit
   if (!window._recCache) window._recCache = {};
   if (recId) window._recCache[String(recId)] = r;
-
-
 
   const infoBox = (label, value, color) => value ? `
     <div style="background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:6px;">
@@ -2401,7 +2357,6 @@ async function loadAllHistory() {
     let where = histFilter !== 'Semua' ? `?where=${encodeURIComponent(`(type,eq,${histFilter})`)}&` : '?';
     const data = await api(`/api/v1/db/data/noco/${baseId}/${recId}${where}sort=-work_date&limit=100`);
     allRecords = data?.list || [];
-    // Simpan ke cache global untuk edit
     if (!window._recCache) window._recCache = {};
     allRecords.forEach(r => {
       const id = r.Id || r.id;
@@ -2434,10 +2389,8 @@ function gotoAddRecord() {
   document.getElementById('add-dev-code').textContent = currentDevice.device_code;
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('f-title').value  = '';
-  // Auto-fill nama teknisi dari session login
   document.getElementById('f-tech').value   = session?.name || session?.Name || '';
   document.getElementById('f-dur').value    = '';
-  // Reset foto
   document.getElementById('f-photos').value = '';
   document.getElementById('photo-preview').innerHTML = '';
   document.getElementById('photo-upload-status').textContent = '';
@@ -2451,7 +2404,6 @@ function gotoAddRecord() {
   currentStatus = 'selesai';
   currentPrio   = 'normal';
   selectType('PM');
-  // Set field teknisi readonly by default
   _techEditable = false;
   const techInp = document.getElementById('f-tech');
   const techBtn = document.getElementById('btn-tech-edit');
@@ -2518,7 +2470,6 @@ async function saveRecord() {
       created_by:      session?.id || session?.Id || null,
     };
 
-    // Upload foto jika ada
     const btn2 = document.getElementById('btn-save');
     if (window._selectedPhotos && window._selectedPhotos.length > 0) {
       btn2.textContent = 'Mengupload foto...';
@@ -2540,7 +2491,7 @@ async function saveRecord() {
   }
 }
 
-// ── DEVICE MANAGEMENT (ADMIN) ──────────────────────
+// ── DEVICE MANAGEMENT (ADMIN) ──
 let allDevicesList = [];
 
 async function loadDevices() {
@@ -2662,7 +2613,6 @@ function openAddDevice() {
   document.getElementById('modal-dev-title').textContent = '➕ Tambah Perangkat';
   document.getElementById('btn-save-device').textContent = '✓  SIMPAN PERANGKAT';
   document.getElementById('btn-save-device').style.display = 'block';
-  // Reset form
   ['dev-f-code','dev-f-name','dev-f-loc','dev-f-area','dev-f-brand','dev-f-model','dev-f-serial','dev-f-notes'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
@@ -2714,12 +2664,9 @@ async function saveDevice() {
   try {
     const devTableId = getTableId('devices') || getTableId('02_devices');
 
-    // Helper: pastikan format tanggal YYYY-MM-DD
     const fmtInputDate = (val) => {
       if (!val) return null;
-      // Jika sudah YYYY-MM-DD
       if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.substring(0,10);
-      // Jika DD/MM/YYYY
       if (/^\d{2}\/\d{2}\/\d{4}/.test(val)) {
         const [d,m,y] = val.split('/');
         return `${y}-${m}-${d}`;
@@ -2744,7 +2691,6 @@ async function saveDevice() {
     };
 
     if (editId) {
-      // Edit existing
       const res = await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devTableId}/${editId}`, {
         method: 'PATCH',
         headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' },
@@ -2758,7 +2704,6 @@ async function saveDevice() {
       closeDeviceModal();
       setTimeout(() => loadDevices(), 800);
     } else {
-      // Add new
       payload.created_at = new Date().toISOString().substring(0,19).replace('T',' ');
       payload.created_by = session?.id || null;
 
@@ -2776,11 +2721,9 @@ async function saveDevice() {
       const newId  = newDev?.Id || newDev?.id;
       toast(`✓ Perangkat "${name}" berhasil ditambahkan`);
 
-      // Tutup modal device dulu
       closeDeviceModal();
       setTimeout(() => loadDevices(), 800);
 
-      // Tampilkan QR di modal QR
       setTimeout(async () => {
         document.getElementById('qr-modal-title').textContent      = '🔳 QR Code Perangkat Baru';
         document.getElementById('qr-modal-device-name').textContent = name;
@@ -2809,16 +2752,15 @@ function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// Close modal on overlay click
 document.getElementById('modal-device')?.addEventListener('click', function(e) {
   if (e.target === this) closeDeviceModal();
 });
 
-// ── SCAN DARI GALERI/FOTO ──────────────────────────
+// ── SCAN DARI GALERI/FOTO ──
 function openGalleryScan() {
   const input = document.getElementById('gallery-input');
   if (input) {
-    input.value = ''; // reset agar bisa pilih file sama
+    input.value = '';
     input.click();
   }
 }
@@ -2832,14 +2774,12 @@ async function scanFromGallery(input) {
     '<div class="scan-pulse"></div><span>Membaca QR dari foto...</span>';
 
   try {
-    // Buat image dari file
     const img = new Image();
     const url = URL.createObjectURL(file);
 
     img.onload = async function() {
       URL.revokeObjectURL(url);
 
-      // Gambar ke canvas
       const canvas = document.createElement('canvas');
       canvas.width  = img.width;
       canvas.height = img.height;
@@ -2848,7 +2788,6 @@ async function scanFromGallery(input) {
 
       let found = false;
 
-      // Coba BarcodeDetector dulu (Chrome desktop support)
       if ('BarcodeDetector' in window) {
         try {
           const detector = new BarcodeDetector({ formats: ['qr_code'] });
@@ -2861,7 +2800,6 @@ async function scanFromGallery(input) {
         } catch {}
       }
 
-      // Fallback: jsQR via canvas
       if (window.jsQR) {
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const code    = jsQR(imgData.data, imgData.width, imgData.height, {
@@ -2874,7 +2812,6 @@ async function scanFromGallery(input) {
         }
       }
 
-      // Load jsQR dari server lokal
       if (statusEl) statusEl.innerHTML =
         '<div class="scan-pulse"></div><span>Memuat decoder QR...</span>';
       const sources2 = ['/jsqr.min.js', '/historia/jsqr.min.js', 'jsqr.min.js'];
@@ -2920,7 +2857,6 @@ function onQRFromGallery(code) {
   toast('✓ QR Code: ' + code);
   setTimeout(() => findDevice(code), 500);
 }
-// Pakai library qrcode.js via CDN (pure JS, no canvas API issues)
 
 function loadQRLib() {
   return new Promise((resolve) => {
@@ -2932,14 +2868,12 @@ function loadQRLib() {
   });
 }
 
-// Generate QR ke canvas element
 async function generateQRToCanvas(canvasId, text, size = 180) {
   await loadQRLib();
   const canvas = document.getElementById(canvasId);
   const ctx    = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // QRCode lib pakai div, kita ambil canvas-nya
   const tempDiv = document.createElement('div');
   document.body.appendChild(tempDiv);
 
@@ -2974,7 +2908,6 @@ async function generateQRToCanvas(canvasId, text, size = 180) {
   });
 }
 
-// Tampilkan QR modal untuk perangkat yang sudah ada
 async function showQRDevice(id) {
   const dev = allDevicesList.find(d => String(d.Id||d.id) === String(id));
   if (!dev) return;
@@ -2985,16 +2918,13 @@ async function showQRDevice(id) {
   document.getElementById('qr-modal-device-name').textContent = dev.name;
   document.getElementById('qr-modal-code').textContent    = code;
 
-  // Generate QR
   const dataUrl = await generateQRToCanvas('qr-modal-canvas', code, 200);
 
-  // Simpan ke database jika belum ada qr_code_url
   if (dataUrl && !dev.qr_code_url) {
     await saveQRToDatabase(id, code, dataUrl);
   }
 }
 
-// Simpan QR ke database (kolom qr_code_url)
 async function saveQRToDatabase(devId, code, dataUrl) {
   try {
     const devTableId = getTableId('devices') || getTableId('02_devices');
@@ -3011,7 +2941,6 @@ async function saveQRToDatabase(devId, code, dataUrl) {
   }
 }
 
-// Download QR dari modal viewer
 function downloadQRModal() {
   const canvas = document.getElementById('qr-modal-canvas');
   const code   = document.getElementById('qr-modal-code').textContent;
@@ -3022,7 +2951,6 @@ function downloadQRModal() {
   toast('✓ QR Code berhasil didownload');
 }
 
-// Print QR dari modal
 function printQRModal() {
   const canvas  = document.getElementById('qr-modal-canvas');
   const code    = document.getElementById('qr-modal-code').textContent;
@@ -3055,18 +2983,16 @@ function closeQRModal() {
   document.getElementById('modal-qr').style.display = 'none';
 }
 
-// Close QR modal on overlay click
 document.getElementById('modal-qr')?.addEventListener('click', function(e) {
   if (e.target === this) closeQRModal();
 });
 
-// ── EDIT HISTORY RECORD ────────────────────────────
+// ── EDIT HISTORY RECORD ──
 let currentEditRecord = null;
 let editRecStatus     = 'selesai';
 let editRecPrio       = 'normal';
 
 function openEditRecord(id) {
-  // Ambil record dari cache
   const cache = window._recCache || {};
   const rec   = cache[String(id)];
   if (!rec) { toast('Data record tidak ditemukan', true); return; }
@@ -3085,7 +3011,6 @@ function openEditRecord(id) {
   editRecStatus = rec.status || 'selesai';
   editRecPrio   = rec.priority || 'normal';
 
-  // Info record
   document.getElementById('edit-rec-info').innerHTML =
     `<strong>${rec.title || '-'}</strong><br>
      <span style="color:var(--accent);font-size:10px;letter-spacing:1px;">${rec.type || ''}</span>
@@ -3094,18 +3019,15 @@ function openEditRecord(id) {
   document.getElementById('edit-rec-id').value   = id;
   document.getElementById('edit-rec-role').value = role;
 
-  // Isi field bersama (Admin + Shift Leader)
   document.getElementById('ef-title').value   = rec.title || '';
   document.getElementById('ef-dur').value     = rec.duration_hours || '';
   document.getElementById('ef-desc').value    = rec.description || '';
   document.getElementById('ef-action').value  = rec.action_taken || '';
 
-  // Status chips
   document.querySelectorAll('[data-estatus]').forEach(c => c.className = 'chip');
   const activeStatus = document.querySelector(`[data-estatus="${editRecStatus}"]`);
   if (activeStatus) activeStatus.className = 'chip active-accent';
 
-  // Field khusus Admin
   const adminFields = document.getElementById('ef-admin-fields');
   if (isAdmin) {
     adminFields.style.display = 'flex';
@@ -3159,7 +3081,6 @@ async function saveEditRecord() {
   try {
     const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
 
-    // Field yang bisa diedit Shift Leader dan Admin
     const payload = {
       title:        document.getElementById('ef-title').value.trim(),
       duration_hours: parseFloat(document.getElementById('ef-dur').value) || null,
@@ -3169,7 +3090,6 @@ async function saveEditRecord() {
       updated_at:   new Date().toISOString().substring(0,19).replace('T',' '),
     };
 
-    // Field tambahan khusus Admin
     if (isAdmin) {
       const workDate = document.getElementById('ef-date').value;
       const cost     = document.getElementById('ef-cost').value;
@@ -3184,12 +3104,10 @@ async function saveEditRecord() {
       payload.priority         = editRecPrio;
     }
 
-    // Upload foto tambahan jika ada
     if (window._editSelectedPhotos && window._editSelectedPhotos.length > 0) {
       document.getElementById('btn-save-edit-rec').textContent = 'Mengupload foto...';
       const uploaded = await uploadPhotos(window._editSelectedPhotos);
       if (uploaded.length > 0) {
-        // Gabung dengan foto lama jika ada
         const existing = currentEditRecord?.photos || [];
         payload.photos = [...existing, ...uploaded];
       }
@@ -3208,7 +3126,6 @@ async function saveEditRecord() {
 
     toast('✓ Record berhasil diperbarui');
     closeEditRecord();
-    // Reload records
     setTimeout(() => {
       if (currentDevice) loadDeviceRecords();
       else loadAllHistory();
@@ -3221,12 +3138,11 @@ async function saveEditRecord() {
   }
 }
 
-// Close modal on overlay click
 document.getElementById('modal-edit-rec')?.addEventListener('click', function(e) {
   if (e.target === this) closeEditRecord();
 });
 
-// ── DESKTOP SIDEBAR ────────────────────────────────
+// ── DESKTOP SIDEBAR ──
 function initDesktopSidebar() {
   if (window.innerWidth < 900) return;
 
@@ -3234,7 +3150,6 @@ function initDesktopSidebar() {
   if (!sidebar) return;
   sidebar.style.display = 'flex';
 
-  // Update user info di sidebar
   if (session) {
     const name = session.name || 'User';
     const role = session.role || '';
@@ -3243,7 +3158,6 @@ function initDesktopSidebar() {
     document.getElementById('sb-name').textContent   = name;
     document.getElementById('sb-role-badge').textContent = roleMap[role] || role;
 
-    // Tampilkan menu Perangkat hanya untuk admin
     if (role === 'admin') {
       document.getElementById('sb-devices').style.display = 'flex';
     }
@@ -3260,11 +3174,9 @@ function doLogout() {
   localStorage.removeItem('hd_session');
   session = null;
   showScreen('login', false);
-  // Reset sidebar
   document.getElementById('desktop-sidebar').style.display = 'none';
 }
 
-// Init sidebar saat resize
 window.addEventListener('resize', () => {
   const sidebar = document.getElementById('desktop-sidebar');
   if (!sidebar) return;
@@ -3369,7 +3281,6 @@ async function uploadPhotos(files) {
   const uploaded = [];
   for (const file of files) {
     try {
-      // Validasi ukuran max 5MB
       if (file.size > 5 * 1024 * 1024) {
         toast(`Foto "${file.name}" terlalu besar (max 5MB)`, true);
         continue;
@@ -3383,7 +3294,6 @@ async function uploadPhotos(files) {
       });
       if (!res.ok) { const t=await res.text(); throw new Error(t); }
       const data = await res.json();
-      // NocoDB return array
       const result = Array.isArray(data) ? data[0] : data;
       if (result) uploaded.push(result);
     } catch(e) {
@@ -3393,17 +3303,9 @@ async function uploadPhotos(files) {
   return uploaded;
 }
 
-// Tampilkan foto di record card
-// Format NocoDB Attachment:
-// { path:"download/maintenance/xxx.jpg",
-//   signedPath:"dltemp/TOKEN/xxx.jpg",
-//   thumbnails:{ tiny:{ signedPath:"dltemp/TOKEN/thumbnails/xxx/tiny.jpg" } } }
 function resolvePhotoUrl(p) {
   if (!p) return { thumb: '', full: '' };
 
-  // Foto via Nginx /foto/ proxy yang sudah di-tunnel Cloudflare
-  // CFG.BASE = Cloudflare URL, /foto/ di-proxy Nginx ke NocoDB storage
-  // Tidak perlu token, tidak ada warning, bisa diakses dari mana saja
   const PROXY = CFG.BASE + '/foto/';
 
   let full = '';
@@ -3414,9 +3316,7 @@ function resolvePhotoUrl(p) {
   return { thumb: full, full: full };
 }
 
-// Fetch foto dengan xc-token lalu inject sebagai blob URL
 function loadPhotoBlob(url, imgEl, linkEl) {
-  // PHP proxy sudah handle auth & CORS — langsung pakai img src
   imgEl.onload = () => { if (linkEl) linkEl.href = url; };
   imgEl.onerror = () => {
     imgEl.parentElement.innerHTML =
@@ -3435,7 +3335,6 @@ function renderPhotos(photos) {
   }
   if (!Array.isArray(list) || !list.length) return '';
 
-  // Generate unique ID untuk setiap foto
   const uid = 'ph' + Date.now();
   const items = list.map((p, idx) => {
     const { thumb, full } = resolvePhotoUrl(p);
@@ -3455,7 +3354,6 @@ function renderPhotos(photos) {
 
   if (!items) return '';
 
-  // Trigger async load setelah DOM ready
   setTimeout(() => {
     list.forEach((p, idx) => {
       const { thumb, full } = resolvePhotoUrl(p);
@@ -3474,7 +3372,6 @@ function renderPhotos(photos) {
     </div>`;
 }
 
-// Reset edit photos saat modal dibuka
 function resetEditPhotos() {
   window._editSelectedPhotos = [];
   const prev = document.getElementById('edit-photo-preview');
@@ -3527,7 +3424,6 @@ async function doDeleteDevice() {
   try {
     const devTableId = getTableId('devices') || getTableId('02_devices');
     const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
-    // Step 1: Ambil semua record PM/CM perangkat ini
     btn.textContent = 'Mencari record PM/CM...';
     let allRecs = [], page = 0;
     while (true) {
@@ -3540,7 +3436,6 @@ async function doDeleteDevice() {
       if (rows.length < 100) break;
       page++;
     }
-    // Step 2: Hapus semua record
     let deleted = 0;
     for (const rec of allRecs) {
       const recId = rec.Id || rec.id;
@@ -3548,7 +3443,6 @@ async function doDeleteDevice() {
       await fetch(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + recTableId + '/' + recId,
         { method: 'DELETE', headers: H });
     }
-    // Step 3: Hapus perangkat
     btn.textContent = 'Menghapus perangkat...';
     const res = await fetch(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + devTableId + '/' + _delDeviceId,
       { method: 'DELETE', headers: H });
