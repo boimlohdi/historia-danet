@@ -963,18 +963,18 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
         </div>
         <div class="field-group">
           <div class="field-label">DURASI (JAM)</div>
-          <div class="field-input"><input id="f-dur" type="number" placeholder="2.5" step="0.5" min="0"></div>
+          <div class="field-input"><input id="f-dur" type="number" placeholder="0" step="0.5" min="0" readonly style="opacity:0.75;"></div>
         </div>
       </div>
 
       <div class="row-fields">
         <div class="field-group">
           <div class="field-label">JAM MULAI</div>
-          <div class="field-input"><input id="f-start" type="time" value="08:00"></div>
+          <div class="field-input"><input id="f-start" type="time" value="08:00" onchange="calcDuration()"></div>
         </div>
         <div class="field-group">
           <div class="field-label">JAM SELESAI</div>
-          <div class="field-input"><input id="f-end" type="time"></div>
+          <div class="field-input"><input id="f-end" type="time" onchange="calcDuration()"></div>
         </div>
       </div>
 
@@ -1002,7 +1002,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
         </div>
       </div>
 
-      <div class="field-group">
+      <div class="field-group" id="wrap-prio">
         <div class="field-label">PRIORITAS</div>
         <div class="chip-row">
           <div class="chip" data-prio="rendah" onclick="selPrio(this)">Rendah</div>
@@ -1018,16 +1018,6 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
       </div>
 
       <div class="field-group">
-        <div class="field-label">DESKRIPSI</div>
-        <textarea class="field-ta" id="f-desc" placeholder="Deskripsi detail pekerjaan..."></textarea>
-      </div>
-
-      <div class="field-group">
-        <div class="field-label">TEMUAN / FINDINGS</div>
-        <textarea class="field-ta" id="f-findings" placeholder="Kondisi perangkat saat diperiksa..."></textarea>
-      </div>
-
-      <div class="field-group">
         <div class="field-label">TINDAKAN YANG DILAKUKAN</div>
         <textarea class="field-ta" id="f-action" placeholder="Tindakan yang sudah dilakukan..."></textarea>
       </div>
@@ -1037,10 +1027,10 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
         <textarea class="field-ta" id="f-recom" placeholder="Rekomendasi tindak lanjut..."></textarea>
       </div>
 
-      <div class="field-group">
-        <div class="field-label">BIAYA (Rp)</div>
-        <div class="field-input"><input id="f-cost" type="number" placeholder="0" value="0" min="0"></div>
-      </div>
+      <!-- Field tersembunyi (tidak ditampilkan di form, default kosong/0) -->
+      <input type="hidden" id="f-desc" value="">
+      <input type="hidden" id="f-findings" value="">
+      <input type="hidden" id="f-cost" value="0">
 
       <!-- Upload Foto -->
       <div class="field-group">
@@ -1073,6 +1063,13 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
       History
     </div>
     <div style="font-size:11px;color:var(--text-3);" id="hist-count">0 record</div>
+  </div>
+
+  <div style="padding:10px 16px 0;">
+    <div class="field-input">
+      <input id="hist-search" type="text" placeholder="🔍 Cari nama perangkat..."
+        oninput="onHistSearchInput()" style="width:100%;">
+    </div>
   </div>
 
   <div class="filter-bar">
@@ -1337,7 +1334,7 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
       <!-- Durasi — Admin & Shift Leader -->
       <div class="edit-field-wrap" id="ef-dur-wrap">
         <div class="field-label">DURASI (JAM)</div>
-        <div class="field-input"><input id="ef-dur" type="number" placeholder="2.5" step="0.5" min="0"></div>
+        <div class="field-input"><input id="ef-dur" type="number" placeholder="0" step="0.5" min="0" readonly style="opacity:0.75;"></div>
       </div>
 
       <!-- Status — Admin & Shift Leader -->
@@ -1351,11 +1348,8 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
         </div>
       </div>
 
-      <!-- Deskripsi — Admin & Shift Leader -->
-      <div class="edit-field-wrap" id="ef-desc-wrap">
-        <div class="field-label">DESKRIPSI</div>
-        <textarea id="ef-desc" class="field-ta" placeholder="Deskripsi pekerjaan..."></textarea>
-      </div>
+      <!-- Deskripsi disembunyikan sesuai permintaan, tetap ada di DOM untuk kompatibilitas -->
+      <textarea id="ef-desc" class="field-ta" style="display:none;"></textarea>
 
       <!-- Tindakan — Admin & Shift Leader -->
       <div class="edit-field-wrap" id="ef-action-wrap">
@@ -1380,29 +1374,24 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
         </div>
         <div>
           <div class="field-label">JAM MULAI</div>
-          <div class="field-input"><input id="ef-start" type="time"></div>
+          <div class="field-input"><input id="ef-start" type="time" onchange="calcEditDuration()"></div>
         </div>
         <div>
           <div class="field-label">JAM SELESAI</div>
-          <div class="field-input"><input id="ef-end" type="time"></div>
-        </div>
-        <div>
-          <div class="field-label">TEMUAN / FINDINGS</div>
-          <textarea id="ef-findings" class="field-ta" placeholder="Temuan kondisi perangkat..."></textarea>
+          <div class="field-input"><input id="ef-end" type="time" onchange="calcEditDuration()"></div>
         </div>
         <div>
           <div class="field-label">REKOMENDASI</div>
           <textarea id="ef-recom" class="field-ta" placeholder="Rekomendasi tindak lanjut..."></textarea>
         </div>
+        <!-- Temuan/Findings & Biaya disembunyikan sesuai permintaan -->
+        <textarea id="ef-findings" class="field-ta" style="display:none;"></textarea>
+        <input id="ef-cost" type="number" style="display:none;" value="0">
         <div>
           <div class="field-label">JADWAL PM BERIKUTNYA</div>
           <div class="field-input"><input id="ef-next" type="date"></div>
         </div>
-        <div>
-          <div class="field-label">BIAYA (Rp)</div>
-          <div class="field-input"><input id="ef-cost" type="number" placeholder="0" min="0"></div>
-        </div>
-        <div>
+        <div id="ef-wrap-prio">
           <div class="field-label">PRIORITAS</div>
           <div class="chip-row">
             <div class="chip" data-eprio="rendah" onclick="selEditPrio(this)">Rendah</div>
@@ -1792,7 +1781,7 @@ async function loadHomeData() {
     const [pmD, cmD, recD] = await Promise.all([
       api(`/api/v1/db/data/noco/${baseId}/${recId}?where=(type,eq,PM)~and(work_date,gte,${ym})&limit=1`),
       api(`/api/v1/db/data/noco/${baseId}/${recId}?where=(type,eq,CM)~and(work_date,gte,${ym})&limit=1`),
-      api(`/api/v1/db/data/noco/${baseId}/${recId}?limit=6&sort=-created_at`),
+      api(`/api/v1/db/data/noco/${baseId}/${recId}?limit=6&sort=-Id`),
     ]);
 
     document.getElementById('stat-pm').textContent = pmD?.pageInfo?.totalRows ?? 0;
@@ -2288,10 +2277,17 @@ function buildRecCard(r) {
       <div style="font-size:12px;color:var(--text-2);margin-top:3px;line-height:1.5;">${value}</div>
     </div>` : '';
 
+  const deviceName = (currentDevice && currentDevice.name)
+    || (window._deviceNameCache && window._deviceNameCache[String(r.device_id)])
+    || '';
+
   return `
     <div class="rec-item ${t}">
       <div class="rec-top">
-        <div class="rec-title">${r.title || '-'}</div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          ${deviceName ? `<div style="font-size:11px;color:var(--text-1,#fff);font-weight:800;letter-spacing:0.5px;text-transform:uppercase;">${deviceName}</div>` : ''}
+          <div class="rec-title">${r.title || '-'}</div>
+        </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
           <div class="badge badge-${t}">${r.type}</div>
         </div>
@@ -2310,8 +2306,6 @@ function buildRecCard(r) {
           <div class="meta-val">${r.duration_hours ? r.duration_hours + ' jam' : '-'}</div>
         </div>
       </div>
-      ${infoBox('📋 Deskripsi', r.description, 'var(--text-3)')}
-      ${infoBox('🔍 Temuan / Findings', r.findings, 'var(--cm)')}
       ${infoBox('🔧 Tindakan yang Dilakukan', r.action_taken, 'var(--pm)')}
       ${infoBox('💡 Rekomendasi', r.recommendation, 'var(--accent)')}
       ${renderPhotos(r.photos)}
@@ -2362,16 +2356,60 @@ async function loadAllHistory() {
       if (id) window._recCache[String(id)] = r;
     });
 
-    document.getElementById('hist-count').textContent = `${allRecords.length} record`;
-
-    if (allRecords.length === 0) {
-      el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Belum Ada Data</div></div>`;
-      return;
+    // Lookup nama perangkat untuk device_id yang belum ada di cache
+    if (!window._deviceNameCache) window._deviceNameCache = {};
+    const devId = getTableId('devices') || getTableId('02_devices');
+    const missingIds = [...new Set(allRecords.map(r => r.device_id).filter(Boolean))]
+      .filter(id => !window._deviceNameCache[String(id)]);
+    if (devId && missingIds.length) {
+      try {
+        const where = missingIds.map(id => `(Id,eq,${id})`).join('~or');
+        const devData = await api(`/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent(where)}&limit=${missingIds.length}`);
+        (devData?.list || []).forEach(d => {
+          const did = d.Id || d.id;
+          if (did) window._deviceNameCache[String(did)] = d.name || d.device_code || '';
+        });
+      } catch(e) { console.log('Device lookup error:', e.message); }
     }
-    el.innerHTML = allRecords.map(r => buildRecCard(r)).join('');
+
+    renderHistList();
   } catch(e) {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">${e.message}</div></div>`;
   }
+}
+
+function renderHistList() {
+  const el = document.getElementById('hist-list');
+  const kw = (document.getElementById('hist-search')?.value || '').trim().toLowerCase();
+
+  let list = allRecords;
+  if (kw) {
+    list = allRecords.filter(r => {
+      const dn = (currentDevice && currentDevice.name)
+        || (window._deviceNameCache && window._deviceNameCache[String(r.device_id)])
+        || '';
+      return dn.toLowerCase().includes(kw);
+    });
+  } else {
+    // Belum search → tampilkan 6 terakhir saja
+    list = allRecords.slice(0, 6);
+  }
+
+  document.getElementById('hist-count').textContent = kw
+    ? `${list.length} record`
+    : `${list.length} dari ${allRecords.length} record`;
+
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Belum Ada Data</div></div>`;
+    return;
+  }
+  el.innerHTML = list.map(r => buildRecCard(r)).join('');
+}
+
+let _histSearchTimer = null;
+function onHistSearchInput() {
+  clearTimeout(_histSearchTimer);
+  _histSearchTimer = setTimeout(renderHistList, 250);
 }
 
 function setHistFilter(f, el) {
@@ -2412,6 +2450,36 @@ function gotoAddRecord() {
   showScreen('add', false);
 }
 
+function calcEditDuration() {
+  const startVal = document.getElementById('ef-start').value;
+  const endVal   = document.getElementById('ef-end').value;
+  const durField = document.getElementById('ef-dur');
+  if (!startVal || !endVal) return;
+
+  const [sh, sm] = startVal.split(':').map(Number);
+  const [eh, em] = endVal.split(':').map(Number);
+  let minutes = (eh * 60 + em) - (sh * 60 + sm);
+  if (minutes < 0) minutes += 24 * 60;
+
+  const hours = Math.round((minutes / 60) * 100) / 100;
+  durField.value = hours;
+}
+
+function calcDuration() {
+  const startVal = document.getElementById('f-start').value;
+  const endVal   = document.getElementById('f-end').value;
+  const durField = document.getElementById('f-dur');
+  if (!startVal || !endVal) { durField.value = ''; return; }
+
+  const [sh, sm] = startVal.split(':').map(Number);
+  const [eh, em] = endVal.split(':').map(Number);
+  let minutes = (eh * 60 + em) - (sh * 60 + sm);
+  if (minutes < 0) minutes += 24 * 60; // lewat tengah malam
+
+  const hours = Math.round((minutes / 60) * 100) / 100;
+  durField.value = hours;
+}
+
 function selectType(t) {
   currentType = t;
   document.getElementById('opt-pm').className = t==='PM' ? 'type-opt sel-pm' : 'type-opt';
@@ -2419,6 +2487,17 @@ function selectType(t) {
   document.getElementById('btn-save').textContent = `✓  SIMPAN RECORD ${t}`;
   document.getElementById('btn-save').className = `btn btn-${t.toLowerCase()}`;
   document.getElementById('wrap-next-sched').style.display = t==='PM' ? 'flex' : 'none';
+
+  const wrapPrio = document.getElementById('wrap-prio');
+  if (t === 'PM') {
+    wrapPrio.style.display = 'none';
+    currentPrio = 'normal';
+    document.querySelectorAll('[data-prio]').forEach(c => c.className='chip');
+    const normalChip = document.querySelector('[data-prio="normal"]');
+    if (normalChip) normalChip.className = 'chip active-accent';
+  } else {
+    wrapPrio.style.display = 'flex';
+  }
 }
 
 function selStatus(el) {
@@ -3064,6 +3143,13 @@ function openEditRecord(id) {
     document.querySelectorAll('[data-eprio]').forEach(c => c.className = 'chip');
     const activePrio = document.querySelector(`[data-eprio="${editRecPrio}"]`);
     if (activePrio) activePrio.className = 'chip active-accent';
+
+    const wrapEditPrio = document.getElementById('ef-wrap-prio');
+    if (rec.type === 'PM') {
+      wrapEditPrio.style.display = 'none';
+    } else {
+      wrapEditPrio.style.display = 'block';
+    }
   } else {
     adminFields.style.display = 'none';
   }
