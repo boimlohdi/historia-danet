@@ -1555,8 +1555,9 @@ function showExitConfirm() {
 
 function cancelExitApp() {
   document.getElementById('modal-exit-confirm').style.display = 'none';
-  // User memilih "Tidak" → pasang ulang guard supaya back selanjutnya
-  // tetap tertangkap lagi (tidak langsung keluar di kesempatan berikutnya).
+  // User memilih "Tidak" → pasang ulang 2 guard (lihat alasan di armExitGuard)
+  // supaya back selanjutnya tetap tertangkap lagi.
+  armExitGuard();
   armExitGuard();
 }
 
@@ -1578,22 +1579,24 @@ function confirmExitApp() {
 }
 
 window.addEventListener('popstate', function() {
-  toast('DEBUG popstate fired, navLayers=' + _navLayers.length + ', suppress=' + _suppressNextPopstate + ', confirmed=' + _exitConfirmed);
   if (_suppressNextPopstate) { _suppressNextPopstate = false; return; }
   if (_exitConfirmed) return; // user sudah konfirmasi keluar, jangan tampilkan modal lagi
   const layer = _navLayers.pop();
   if (!layer) {
     // Tidak ada layer tersisa (artinya sedang di Home) → tampilkan
     // konfirmasi keluar dulu, alih-alih langsung keluar app.
-    toast('DEBUG: showing exit confirm now');
     showExitConfirm();
     return;
   }
   if (typeof layer.closeFn === 'function') layer.closeFn(true);
 });
 
-// Pasang guard pertama kali saat app dimuat, supaya back pertama kali
-// di Home (sebelum pernah membuka layer apapun) tetap tertangkap.
+// Pasang guard pertama kali saat app dimuat. Kita pasang 2x (bukan 1x) karena
+// di sebagian WebView Android, canGoBack() native tidak selalu akurat mendeteksi
+// 1 entry history hasil pushState saja sebagai "bisa back" — dengan 2 entry,
+// WebView native lebih konsisten mendeteksi ada riwayat untuk dimundurkan,
+// sehingga event 'popstate' benar-benar terkirim ke JavaScript saat di Home.
+armExitGuard();
 armExitGuard();
 
 // ── INIT ──
