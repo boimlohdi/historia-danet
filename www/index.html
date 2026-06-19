@@ -1496,6 +1496,34 @@ let videoStream    = null;
 let qrScanner      = null;
 let flashOn        = false;
 
+// ── ANDROID/BROWSER BACK BUTTON HANDLER ──
+// Konsep sederhana: SETIAP kali ada "langkah masuk" (pindah ke tab History/
+// Perangkat dari Home, buka detail perangkat, buka modal, dsb), kita push SATU
+// entry riwayat browser. Tombol back akan memicu 'popstate' satu kali per
+// entry yang di-push, jadi back selalu mundur tepat 1 langkah secara alami —
+// tidak perlu logic khusus untuk "lompat ke Home" karena Home pun, kalau
+// dimasuki dari tab lain, otomatis sudah mundur 1 langkah seperti seharusnya.
+let _navLayers = []; // stack layer aktif: { closeFn }
+let _suppressNextPopstate = false;
+
+function pushNavLayer(closeFn) {
+  _navLayers.push({ closeFn });
+  history.pushState({ navLayer: _navLayers.length }, '');
+}
+
+function popNavLayerSilently() {
+  // Dipanggil saat layer ditutup secara normal (klik tombol Batal/X, dll),
+  // BUKAN lewat tombol back. Kita sinkronkan stack tanpa memicu navigasi balik.
+  _navLayers.pop();
+}
+
+window.addEventListener('popstate', function() {
+  if (_suppressNextPopstate) { _suppressNextPopstate = false; return; }
+  const layer = _navLayers.pop();
+  if (!layer) return; // tidak ada layer tersisa sama sekali → biarkan keluar app
+  if (typeof layer.closeFn === 'function') layer.closeFn(true);
+});
+
 // ── INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
   setDate();
@@ -1624,6 +1652,7 @@ function showScreen(id, pushHistory = true) {
   });
   if (pushHistory && screenStack[screenStack.length - 1] !== id) {
     screenStack.push(id);
+    pushNavLayer(goBackFromHardwareButton);
   }
   document.getElementById('screen-' + id)?.classList.add('active');
 }
@@ -1633,23 +1662,60 @@ function goBack() {
   const prev = screenStack[screenStack.length - 1] || 'login';
   if (prev === 'scan') stopCamera();
   showScreen(prev, false);
+  // Tombol "← Kembali" di UI diklik manual → sinkronkan riwayat browser
+  // dengan mundur satu langkah juga, supaya tombol back Android tidak
+  // "nyangkut" di screen yang sudah ditinggalkan. Tandai dulu agar
+  // popstate yang dipicu history.back() ini tidak menjalankan closeFn lagi.
+  popNavLayerSilently();
+  _suppressNextPopstate = true;
+  history.back();
 }
+
+// Dipanggil khusus saat tombol back Android/gesture back ditekan.
+// Beda dengan goBack() biasa (dipanggil dari tombol "← Kembali" di UI),
+// di sini kita TIDAK perlu popNavLayerSilently karena popstate sudah
+// otomatis mem-pop _navLayers sebelum closeFn ini dipanggil.
+function goBackFromHardwareButton() {
+  screenStack.pop();
+  const prev = screenStack[screenStack.length - 1] || 'login';
+  if (prev === 'scan') stopCamera();
+  showScreen(prev, false);
+}
+
+let _currentMainTab = 'home'; // 'home' | 'history' | 'devices' — tab utama yg sedang aktif
 
 function navTo(tab) {
   const role    = session?.role || '';
   const isAdmin = role === 'admin';
+  const cameFromHome = (_currentMainTab === 'home');
 
   if (tab === 'home') {
     screenStack = ['home'];
+    _navLayers = [];
+    _currentMainTab = 'home';
     showScreen('home', false);
     loadHomeData();
   } else if (tab === 'history') {
     screenStack = ['home', 'history'];
+    _navLayers = [];
+    if (cameFromHome) {
+      pushNavLayer(() => navTo('home'));
+    } else {
+      _navLayers.push({ closeFn: () => navTo('home') }); // ganti isi layer saja, history tidak bertambah
+    }
+    _currentMainTab = 'history';
     showScreen('history', false);
     loadAllHistory();
   } else if (tab === 'devices') {
     if (!isAdmin) { toast('Akses terbatas untuk Administrator', true); return; }
     screenStack = ['home', 'devices'];
+    _navLayers = [];
+    if (cameFromHome) {
+      pushNavLayer(() => navTo('home'));
+    } else {
+      _navLayers.push({ closeFn: () => navTo('home') });
+    }
+    _currentMainTab = 'devices';
     showScreen('devices', false);
     loadDevices();
   }
@@ -1730,6 +1796,8 @@ async function doLogin() {
 function doLogout() {
   clearSession(); session = null;
   screenStack = [];
+  _navLayers = [];
+  _currentMainTab = 'home';
   showScreen('login', false);
 }
 
@@ -1817,6 +1885,7 @@ function getTableId(keyword) {
 // ── SCAN QR ──
 function gotoScan() {
   screenStack = [...screenStack.filter(s => s !== 'scan'), 'scan'];
+  pushNavLayer(goBackFromHardwareButton);
   showScreen('scan', false);
   document.getElementById('manual-panel').classList.remove('show');
   startCamera();
@@ -2221,6 +2290,7 @@ function openDeviceHistory(dev) {
   });
 
   screenStack.push('device');
+  pushNavLayer(goBackFromHardwareButton);
   showScreen('device', false);
   loadDeviceRecords();
 }
@@ -2447,6 +2517,7 @@ function gotoAddRecord() {
   if (techInp) { techInp.readOnly = true; techInp.style.color = 'var(--accent)'; }
   if (techBtn) { techBtn.textContent = 'Ubah'; techBtn.style.background='var(--accent-glow)'; techBtn.style.borderColor='var(--accent)'; techBtn.style.color='var(--accent)'; }
   screenStack.push('add');
+  pushNavLayer(goBackFromHardwareButton);
   showScreen('add', false);
 }
 
@@ -2699,6 +2770,7 @@ function openAddDevice() {
   document.getElementById('dev-f-install').value   = '';
   document.getElementById('dev-f-warranty').value  = '';
   document.getElementById('modal-device').style.display = 'flex';
+  pushNavLayer(closeDeviceModal);
 }
 
 function openEditDevice(id) {
@@ -2720,10 +2792,16 @@ function openEditDevice(id) {
   document.getElementById('dev-f-install').value    = dev.install_date || '';
   document.getElementById('dev-f-warranty').value   = dev.warranty_expiry || '';
   document.getElementById('modal-device').style.display = 'flex';
+  pushNavLayer(closeDeviceModal);
 }
 
-function closeDeviceModal() {
+function closeDeviceModal(fromHardwareBack = false) {
   document.getElementById('modal-device').style.display = 'none';
+  if (!fromHardwareBack) {
+    popNavLayerSilently();
+    _suppressNextPopstate = true;
+    history.back();
+  }
 }
 
 async function saveDevice() {
@@ -3008,6 +3086,7 @@ async function showQRDevice(id) {
   document.getElementById('qr-modal-title').textContent   = 'QR Code Perangkat';
   document.getElementById('qr-modal-device-name').textContent = dev.name;
   document.getElementById('qr-modal-code').textContent    = code;
+  pushNavLayer(closeQRModal);
 
   const dataUrl = await generateQRToCanvas('qr-modal-canvas', code, 200);
 
@@ -3079,8 +3158,13 @@ function printQRModal() {
   win.document.close();
 }
 
-function closeQRModal() {
+function closeQRModal(fromHardwareBack = false) {
   document.getElementById('modal-qr').style.display = 'none';
+  if (!fromHardwareBack) {
+    popNavLayerSilently();
+    _suppressNextPopstate = true;
+    history.back();
+  }
 }
 
 document.getElementById('modal-qr')?.addEventListener('click', function(e) {
@@ -3156,11 +3240,17 @@ function openEditRecord(id) {
 
   resetEditPhotos();
   document.getElementById('modal-edit-rec').style.display = 'flex';
+  pushNavLayer(closeEditRecord);
 }
 
-function closeEditRecord() {
+function closeEditRecord(fromHardwareBack = false) {
   document.getElementById('modal-edit-rec').style.display = 'none';
   currentEditRecord = null;
+  if (!fromHardwareBack) {
+    popNavLayerSilently();
+    _suppressNextPopstate = true;
+    history.back();
+  }
 }
 
 function selEditStatus(el) {
@@ -3280,6 +3370,9 @@ function setSidebarActive(id) {
 function doLogout() {
   localStorage.removeItem('hd_session');
   session = null;
+  screenStack = [];
+  _navLayers = [];
+  _currentMainTab = 'home';
   showScreen('login', false);
   document.getElementById('desktop-sidebar').style.display = 'none';
 }
@@ -3302,19 +3395,47 @@ function confirmDeleteRecord(id, name) {
   _delRecordId   = id;
   _delRecordName = name;
   document.getElementById('del-rec-name').textContent = name || 'Record ini';
+  const btn = document.getElementById('btn-del-record-ok');
+  btn.disabled = false; btn.textContent = 'Ya, Hapus';
   document.getElementById('modal-del-record').style.display = 'flex';
+  pushNavLayer(closeDeleteRecord);
 }
-function closeDeleteRecord() {
+function closeDeleteRecord(fromHardwareBack = false) {
   document.getElementById('modal-del-record').style.display = 'none';
+  const btn = document.getElementById('btn-del-record-ok');
+  btn.disabled = false; btn.textContent = 'Ya, Hapus';
   _delRecordId = null; _delRecordName = null;
+  if (!fromHardwareBack) {
+    popNavLayerSilently();
+    _suppressNextPopstate = true;
+    history.back();
+  }
 }
+// Wrapper fetch dengan timeout, supaya request yang menggantung
+// (jaringan putus-nyambung, tab dibekukan, dll) tidak membuat tombol stuck selamanya.
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('Koneksi terlalu lama (timeout). Periksa jaringan lalu coba lagi.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function doDeleteRecord() {
   if (!_delRecordId) return;
   const btn = document.getElementById('btn-del-record-ok');
   btn.disabled = true; btn.textContent = 'Menghapus...';
   try {
     const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}/${_delRecordId}`,
       { method:'DELETE', headers:{'xc-token':CFG.TOKEN,'Content-Type':'application/json'} }
     );
@@ -3519,11 +3640,21 @@ let _delDeviceId = null, _delDeviceName = null;
 function confirmDeleteDevice(id, name) {
   _delDeviceId = id; _delDeviceName = name;
   document.getElementById('del-dev-name').textContent = name || 'Perangkat ini';
+  const btn = document.getElementById('btn-del-device-ok');
+  btn.disabled = false; btn.textContent = 'Ya, Hapus';
   document.getElementById('modal-del-device').style.display = 'flex';
+  pushNavLayer(closeDeleteDevice);
 }
-function closeDeleteDevice() {
+function closeDeleteDevice(fromHardwareBack = false) {
   document.getElementById('modal-del-device').style.display = 'none';
+  const btn = document.getElementById('btn-del-device-ok');
+  btn.disabled = false; btn.textContent = 'Ya, Hapus';
   _delDeviceId = null; _delDeviceName = null;
+  if (!fromHardwareBack) {
+    popNavLayerSilently();
+    _suppressNextPopstate = true;
+    history.back();
+  }
 }
 async function doDeleteDevice() {
   if (!_delDeviceId) return;
@@ -3535,7 +3666,7 @@ async function doDeleteDevice() {
     btn.textContent = 'Mencari record PM/CM...';
     let allRecs = [], page = 0;
     while (true) {
-      const res = await fetch(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + recTableId +
+      const res = await fetchWithTimeout(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + recTableId +
         '?where=' + encodeURIComponent('(device_id,eq,' + _delDeviceId + ')') +
         '&limit=100&offset=' + (page * 100) + '&fields=Id,id', { headers: H });
       const d = await res.json();
@@ -3548,11 +3679,11 @@ async function doDeleteDevice() {
     for (const rec of allRecs) {
       const recId = rec.Id || rec.id;
       btn.textContent = 'Hapus record ' + (++deleted) + '/' + allRecs.length + '...';
-      await fetch(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + recTableId + '/' + recId,
+      await fetchWithTimeout(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + recTableId + '/' + recId,
         { method: 'DELETE', headers: H });
     }
     btn.textContent = 'Menghapus perangkat...';
-    const res = await fetch(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + devTableId + '/' + _delDeviceId,
+    const res = await fetchWithTimeout(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + devTableId + '/' + _delDeviceId,
       { method: 'DELETE', headers: H });
     if (!res.ok) { const e = await res.text(); throw new Error('API ' + res.status + ': ' + e); }
     toast('✓ Perangkat "' + _delDeviceName + '" & ' + allRecs.length + ' record berhasil dihapus');
