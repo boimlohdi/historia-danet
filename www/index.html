@@ -1564,10 +1564,17 @@ let _exitConfirmed = false;
 
 function confirmExitApp() {
   document.getElementById('modal-exit-confirm').style.display = 'none';
-  // User memilih "Ya, Keluar" → mundur sekali lagi tanpa guard terpasang,
-  // supaya kali ini benar-benar diteruskan ke browser/Android (keluar app).
   _exitConfirmed = true;
-  history.back();
+  // Di APK (Capacitor): history.back() saja TIDAK menutup aplikasi, karena
+  // WebView Capacitor tidak otomatis memanggil finish() pada activity Android
+  // walau riwayatnya sudah habis. Harus panggil App.exitApp() secara eksplisit.
+  // Di browser biasa (HP/desktop, bukan APK): Capacitor.Plugins tidak ada,
+  // jadi fallback ke history.back() seperti semula.
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.exitApp();
+  } else {
+    history.back();
+  }
 }
 
 window.addEventListener('popstate', function() {
