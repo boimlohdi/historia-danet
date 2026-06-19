@@ -1578,12 +1578,14 @@ function confirmExitApp() {
 }
 
 window.addEventListener('popstate', function() {
+  toast('DEBUG popstate fired, navLayers=' + _navLayers.length + ', suppress=' + _suppressNextPopstate + ', confirmed=' + _exitConfirmed);
   if (_suppressNextPopstate) { _suppressNextPopstate = false; return; }
   if (_exitConfirmed) return; // user sudah konfirmasi keluar, jangan tampilkan modal lagi
   const layer = _navLayers.pop();
   if (!layer) {
     // Tidak ada layer tersisa (artinya sedang di Home) → tampilkan
     // konfirmasi keluar dulu, alih-alih langsung keluar app.
+    toast('DEBUG: showing exit confirm now');
     showExitConfirm();
     return;
   }
