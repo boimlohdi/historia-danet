@@ -7,6 +7,14 @@
             <certificates src="user" />
         </trust-anchors>
     </base-config>
+    <!-- Izinkan domain produksi datnet.online (Historia Danet, EnviroWatch, dst) -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">datnet.online</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
     <!-- Izinkan ngrok domain -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">ngrok-free.dev</domain>
