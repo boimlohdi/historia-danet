@@ -1458,6 +1458,30 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
   </div>
 </div>
 
+<div id="modal-exit-confirm" style="position:fixed;inset:0;background:rgba(0,0,0,.8);
+  display:none;align-items:center;justify-content:center;z-index:500;padding:24px;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);
+    border-radius:20px;padding:24px;width:100%;max-width:360px;">
+    <div style="font-size:40px;text-align:center;margin-bottom:12px;">🚪</div>
+    <div style="font-size:17px;font-weight:700;text-align:center;margin-bottom:8px;">Keluar Aplikasi?</div>
+    <div style="font-size:13px;color:var(--text-2);text-align:center;margin-bottom:20px;">
+      Apakah Anda ingin keluar dari Historia Danet?
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="cancelExitApp()"
+        style="padding:12px;background:none;border:1.5px solid var(--border);
+               color:var(--text-2);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
+        Tidak
+      </button>
+      <button onclick="confirmExitApp()"
+        style="padding:12px;background:var(--danger);color:#fff;
+               border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
+        Ya, Keluar
+      </button>
+    </div>
+  </div>
+</div>
+
 </div><!-- end #app -->
 
 <script>
@@ -1517,12 +1541,51 @@ function popNavLayerSilently() {
   _navLayers.pop();
 }
 
+// Pasang 1 entry "guard" paling dasar di riwayat browser, supaya ketika user
+// sudah di Home (_navLayers kosong) dan menekan back, itu TETAP memicu
+// 'popstate' (bukan langsung keluar WebView/app) — sehingga kita masih punya
+// kesempatan menampilkan modal konfirmasi keluar.
+function armExitGuard() {
+  history.pushState({ navLayer: 'exit-guard' }, '');
+}
+
+function showExitConfirm() {
+  document.getElementById('modal-exit-confirm').style.display = 'flex';
+}
+
+function cancelExitApp() {
+  document.getElementById('modal-exit-confirm').style.display = 'none';
+  // User memilih "Tidak" → pasang ulang guard supaya back selanjutnya
+  // tetap tertangkap lagi (tidak langsung keluar di kesempatan berikutnya).
+  armExitGuard();
+}
+
+let _exitConfirmed = false;
+
+function confirmExitApp() {
+  document.getElementById('modal-exit-confirm').style.display = 'none';
+  // User memilih "Ya, Keluar" → mundur sekali lagi tanpa guard terpasang,
+  // supaya kali ini benar-benar diteruskan ke browser/Android (keluar app).
+  _exitConfirmed = true;
+  history.back();
+}
+
 window.addEventListener('popstate', function() {
   if (_suppressNextPopstate) { _suppressNextPopstate = false; return; }
+  if (_exitConfirmed) return; // user sudah konfirmasi keluar, jangan tampilkan modal lagi
   const layer = _navLayers.pop();
-  if (!layer) return; // tidak ada layer tersisa sama sekali → biarkan keluar app
+  if (!layer) {
+    // Tidak ada layer tersisa (artinya sedang di Home) → tampilkan
+    // konfirmasi keluar dulu, alih-alih langsung keluar app.
+    showExitConfirm();
+    return;
+  }
   if (typeof layer.closeFn === 'function') layer.closeFn(true);
 });
+
+// Pasang guard pertama kali saat app dimuat, supaya back pertama kali
+// di Home (sebelum pernah membuka layer apapun) tetap tertangkap.
+armExitGuard();
 
 // ── INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
