@@ -1066,11 +1066,54 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
   </div>
 
   <div style="padding:10px 16px 0;">
-    <div class="field-input">
-      <input id="hist-search" type="text" placeholder="🔍 Cari nama perangkat..."
-        oninput="onHistSearchInput()" style="width:100%;">
+    <div style="display:flex;gap:8px;">
+      <div class="field-input" style="flex:1;">
+        <input id="hist-search" type="text" placeholder="🔍 Cari nama perangkat..."
+          oninput="onHistSearchInput()" style="width:100%;">
+      </div>
+      <button id="hist-cal-btn" onclick="toggleHistCalPanel()" aria-label="Filter tanggal"
+        style="width:42px;flex-shrink:0;background:var(--bg-card2);border:1.5px solid var(--border);
+               border-radius:10px;color:var(--text-3);display:flex;align-items:center;
+               justify-content:center;cursor:pointer;font-size:17px;">📅</button>
+    </div>
+
+    <div id="hist-date-chip" style="display:none;align-items:center;gap:6px;
+         background:var(--accent-glow);border:1px solid var(--accent);border-radius:8px;
+         padding:5px 10px;width:fit-content;margin-top:8px;font-size:12px;color:var(--accent);
+         font-weight:600;">
+      <span>📅</span>
+      <span id="hist-date-chip-text"></span>
+      <span onclick="clearHistDateFilter()" style="cursor:pointer;margin-left:2px;font-weight:700;">✕</span>
+    </div>
+
+    <div id="hist-cal-panel" style="display:none;background:var(--bg-card2);
+         border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:8px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:.5px;margin-bottom:10px;">PILIH CEPAT</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        <button onclick="histQuickDate('today')" class="hist-quick-btn">Hari ini</button>
+        <button onclick="histQuickDate('week')" class="hist-quick-btn">Minggu ini</button>
+        <button onclick="histQuickDate('month')" class="hist-quick-btn">Bulan ini</button>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:.5px;margin-bottom:8px;">ATAU PILIH TANGGAL</div>
+      <div class="field-input"><input id="hist-date-pick" type="date" style="width:100%;"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button onclick="toggleHistCalPanel()"
+          style="flex:1;background:none;border:1.5px solid var(--border);border-radius:8px;
+                 padding:9px;color:var(--text-2);font-size:13px;font-weight:700;cursor:pointer;">Batal</button>
+        <button onclick="applyHistDateFilter()"
+          style="flex:1;background:var(--accent);border:none;border-radius:8px;
+                 padding:9px;color:#001A2E;font-size:13px;font-weight:700;cursor:pointer;">Terapkan</button>
+      </div>
     </div>
   </div>
+
+  <style>
+    .hist-quick-btn{
+      background:var(--bg-card);border:1px solid var(--border);border-radius:8px;
+      padding:7px 12px;color:var(--text-1);font-size:12px;cursor:pointer;
+    }
+    .hist-quick-btn:active{ background:var(--accent-glow); border-color:var(--accent); color:var(--accent); }
+  </style>
 
   <div class="filter-bar">
     <button class="filter-tab f-all" onclick="setHistFilter('Semua',this)">Semua</button>
@@ -1400,6 +1443,12 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
             <div class="chip" data-eprio="kritis" onclick="selEditPrio(this)">Kritis</div>
           </div>
         </div>
+      </div>
+
+      <!-- Foto Lama (sudah diupload sebelumnya) -->
+      <div id="ef-existing-photos-wrap" style="display:none;">
+        <div class="field-label" style="margin-bottom:8px;">FOTO YANG SUDAH ADA</div>
+        <div id="ef-existing-photos" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
       </div>
 
       <!-- Upload Foto tambahan -->
@@ -2383,7 +2432,7 @@ async function loadDeviceRecords() {
     if (currentFilter !== 'Semua') where += `~and(type,eq,${currentFilter})`;
 
     const data = await api(
-      `/api/v1/db/data/noco/${baseId}/${recId}?where=${encodeURIComponent(where)}&sort=-work_date&limit=50`
+      `/api/v1/db/data/noco/${baseId}/${recId}?where=${encodeURIComponent(where)}&sort=-work_date&limit=1000`
     );
     const recs = data?.list || [];
     if (!window._recCache) window._recCache = {};
@@ -2495,7 +2544,7 @@ async function loadAllHistory() {
 
   try {
     let where = histFilter !== 'Semua' ? `?where=${encodeURIComponent(`(type,eq,${histFilter})`)}&` : '?';
-    const data = await api(`/api/v1/db/data/noco/${baseId}/${recId}${where}sort=-work_date&limit=100`);
+    const data = await api(`/api/v1/db/data/noco/${baseId}/${recId}${where}sort=-Id&limit=1000`);
     allRecords = data?.list || [];
     if (!window._recCache) window._recCache = {};
     allRecords.forEach(r => {
@@ -2525,24 +2574,40 @@ async function loadAllHistory() {
   }
 }
 
+let _histDateFilter = null; // { mode: 'exact'|'week'|'month', value: 'YYYY-MM-DD' atau null }
+
 function renderHistList() {
   const el = document.getElementById('hist-list');
   const kw = (document.getElementById('hist-search')?.value || '').trim().toLowerCase();
 
   let list = allRecords;
-  if (kw) {
+  const hasNameFilter = !!kw;
+  const hasDateFilter = !!_histDateFilter;
+
+  if (hasNameFilter || hasDateFilter) {
     list = allRecords.filter(r => {
-      const dn = (currentDevice && currentDevice.name)
-        || (window._deviceNameCache && window._deviceNameCache[String(r.device_id)])
-        || '';
-      return dn.toLowerCase().includes(kw);
+      // Filter nama: kalau kosong, dianggap cocok semua (tidak ikut membatasi)
+      let nameMatch = true;
+      if (hasNameFilter) {
+        const dn = (currentDevice && currentDevice.name)
+          || (window._deviceNameCache && window._deviceNameCache[String(r.device_id)])
+          || '';
+        nameMatch = dn.toLowerCase().includes(kw);
+      }
+      // Filter tanggal: kalau kosong, dianggap cocok semua (tidak ikut membatasi)
+      let dateMatch = true;
+      if (hasDateFilter) {
+        dateMatch = matchHistDate(r.work_date);
+      }
+      // AND: keduanya harus cocok
+      return nameMatch && dateMatch;
     });
   } else {
-    // Belum search → tampilkan 6 terakhir saja
+    // Belum search/filter apapun → tampilkan 6 terakhir saja
     list = allRecords.slice(0, 6);
   }
 
-  document.getElementById('hist-count').textContent = kw
+  document.getElementById('hist-count').textContent = (hasNameFilter || hasDateFilter)
     ? `${list.length} record`
     : `${list.length} dari ${allRecords.length} record`;
 
@@ -2551,6 +2616,69 @@ function renderHistList() {
     return;
   }
   el.innerHTML = list.map(r => buildRecCard(r)).join('');
+}
+
+function matchHistDate(workDate) {
+  if (!workDate || !_histDateFilter) return false;
+  const d = new Date(workDate + 'T00:00:00');
+  if (isNaN(d.getTime())) return false;
+
+  if (_histDateFilter.mode === 'exact') {
+    return workDate.substring(0, 10) === _histDateFilter.value;
+  }
+  if (_histDateFilter.mode === 'today') {
+    const today = new Date();
+    return d.toDateString() === today.toDateString();
+  }
+  if (_histDateFilter.mode === 'week') {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    const dayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1; // Senin = awal minggu
+    startOfWeek.setDate(today.getDate() - dayOfWeek);
+    startOfWeek.setHours(0,0,0,0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23,59,59,999);
+    return d >= startOfWeek && d <= endOfWeek;
+  }
+  if (_histDateFilter.mode === 'month') {
+    const today = new Date();
+    return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+  }
+  return false;
+}
+
+function toggleHistCalPanel() {
+  const p = document.getElementById('hist-cal-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function histQuickDate(mode) {
+  _histDateFilter = { mode, value: null };
+  const labels = { today: 'Hari ini', week: 'Minggu ini', month: 'Bulan ini' };
+  document.getElementById('hist-date-chip-text').textContent = labels[mode];
+  document.getElementById('hist-date-chip').style.display = 'flex';
+  document.getElementById('hist-cal-panel').style.display = 'none';
+  renderHistList();
+}
+
+function applyHistDateFilter() {
+  const v = document.getElementById('hist-date-pick').value;
+  if (!v) { toast('Pilih tanggal dulu', true); return; }
+  _histDateFilter = { mode: 'exact', value: v };
+  const d = new Date(v + 'T00:00:00');
+  const txt = d.toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+  document.getElementById('hist-date-chip-text').textContent = txt;
+  document.getElementById('hist-date-chip').style.display = 'flex';
+  document.getElementById('hist-cal-panel').style.display = 'none';
+  renderHistList();
+}
+
+function clearHistDateFilter() {
+  _histDateFilter = null;
+  document.getElementById('hist-date-chip').style.display = 'none';
+  document.getElementById('hist-date-pick').value = '';
+  renderHistList();
 }
 
 let _histSearchTimer = null;
@@ -2728,6 +2856,18 @@ async function loadDevices() {
     const countData = await api('/api/v1/db/data/noco/' + baseId + '/' + devId + '?limit=1');
     const total = countData && countData.pageInfo ? countData.pageInfo.totalRows : 0;
     document.getElementById('dev-count-top').textContent = total + ' perangkat terdaftar';
+
+    // Kalau kotak pencarian masih ada isinya (misal user balik dari Edit/QR/History
+    // tanpa sengaja mengosongkan pencarian), langsung terapkan ulang filternya
+    // alih-alih menampilkan placeholder "Cari Perangkat" yang kosong.
+    const searchInput = document.getElementById('dev-search');
+    const kw = searchInput ? searchInput.value.trim() : '';
+    if (kw) {
+      el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">Mencari...</div></div>';
+      await searchDevicesServer(kw);
+      return;
+    }
+
     allDevicesList = [];
     el.innerHTML = '<div class="empty-state" style="padding:48px 24px;">' +
       '<div style="font-size:40px;margin-bottom:12px;">🔍</div>' +
@@ -3316,6 +3456,7 @@ function openEditRecord(id) {
   }
 
   resetEditPhotos();
+  renderExistingPhotosEdit(rec.photos);
   document.getElementById('modal-edit-rec').style.display = 'flex';
   pushNavLayer(closeEditRecord);
 }
@@ -3323,6 +3464,7 @@ function openEditRecord(id) {
 function closeEditRecord(fromHardwareBack = false) {
   document.getElementById('modal-edit-rec').style.display = 'none';
   currentEditRecord = null;
+  _editKeptPhotos = [];
   if (!fromHardwareBack) {
     popNavLayerSilently();
     _suppressNextPopstate = true;
@@ -3378,14 +3520,19 @@ async function saveEditRecord() {
       payload.priority         = editRecPrio;
     }
 
+    // Foto lama yang masih dipertahankan (setelah user mungkin hapus beberapa)
+    // selalu dikirim, supaya penghapusan foto tetap tersimpan walau tidak ada
+    // foto baru yang diupload.
+    let finalPhotos = [..._editKeptPhotos];
+
     if (window._editSelectedPhotos && window._editSelectedPhotos.length > 0) {
       document.getElementById('btn-save-edit-rec').textContent = 'Mengupload foto...';
       const uploaded = await uploadPhotos(window._editSelectedPhotos);
       if (uploaded.length > 0) {
-        const existing = currentEditRecord?.photos || [];
-        payload.photos = [...existing, ...uploaded];
+        finalPhotos = [...finalPhotos, ...uploaded];
       }
     }
+    payload.photos = finalPhotos;
 
     const res = await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}/${recId}`, {
       method: 'PATCH',
@@ -3676,6 +3823,62 @@ function renderPhotos(photos) {
                   letter-spacing:1px;margin-bottom:8px;">📷 FOTO DOKUMENTASI</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">${items}</div>
     </div>`;
+}
+
+// ── FOTO LAMA DI FORM EDIT (lihat + hapus) ──
+let _editKeptPhotos = []; // foto lama yang TIDAK dihapus user, dikirim balik saat save
+
+function renderExistingPhotosEdit(photos) {
+  let list = photos;
+  if (typeof list === 'string') {
+    try { list = JSON.parse(list); } catch { list = []; }
+  }
+  if (!Array.isArray(list)) list = [];
+  _editKeptPhotos = [...list];
+  renderKeptPhotosUI();
+}
+
+function removeExistingPhoto(idx) {
+  _editKeptPhotos.splice(idx, 1);
+  renderKeptPhotosUI();
+  toast('Foto dihapus dari daftar — klik "Simpan Perubahan" untuk menerapkan');
+}
+
+function renderKeptPhotosUI() {
+  const wrap = document.getElementById('ef-existing-photos-wrap');
+  const cont = document.getElementById('ef-existing-photos');
+  const list = _editKeptPhotos;
+
+  if (!list.length) {
+    wrap.style.display = 'none';
+    cont.innerHTML = '';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  cont.innerHTML = list.map((p, idx) => {
+    const imgId = 'ef_exist_img_' + idx;
+    return `
+      <div style="position:relative;flex-shrink:0;">
+        <img id="${imgId}"
+          style="width:90px;height:90px;object-fit:cover;border-radius:10px;
+                 border:1.5px solid var(--border);background:var(--bg-card2);"
+          src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
+        <button onclick="removeExistingPhoto(${idx})" type="button"
+          style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;
+                 border-radius:50%;background:var(--danger);color:#fff;border:none;
+                 font-size:13px;font-weight:700;cursor:pointer;display:flex;
+                 align-items:center;justify-content:center;line-height:1;">✕</button>
+      </div>`;
+  }).join('');
+
+  setTimeout(() => {
+    list.forEach((p, idx) => {
+      const { full } = resolvePhotoUrl(p);
+      const imgEl = document.getElementById('ef_exist_img_' + idx);
+      if (imgEl && full) imgEl.src = full;
+    });
+  }, 50);
 }
 
 function resetEditPhotos() {
