@@ -1601,7 +1601,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (session) {
     baseId = session.baseId;
     tables = session.tables;
-    showScreen('home');
+    showScreen('home', false);
+    screenStack = ['home'];
     loadHomeData();
   }
 });
@@ -1854,7 +1855,8 @@ async function doLogin() {
     session = { ...user, baseId, tables };
     saveSession(session);
 
-    showScreen('home');
+    showScreen('home', false);
+    screenStack = ['home'];
     loadHomeData();
   } catch (err) {
     toast(err.message, true);
