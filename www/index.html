@@ -1541,21 +1541,23 @@ textarea.field-ta::placeholder{ color:var(--text-3); }
 
 // ── CONFIG ──
 const CFG = {
-  // ✅ Satu alamat proxy — HP cukup akses ini saja
-  BASE:  'https://historia.datnet.online',
-  // Nginx akan forward /api/ → NocoDB secara otomatis
-  TOKEN: 'm3C7O-OLFIoNesNDcgYB_UQVDIfbMYLQiNo8-bSB',
-  WEB:   'http://172.17.164.100',       // Windows XAMPP (diakses via proxy)
+  // v2: client TIDAK LAGI menyimpan token NocoDB sama sekali.
+  // Semua request lewat backend API kustom yang menyimpan token secara rahasia
+  // di server, dan client cuma kirim JWT session milik user yang sedang login.
+  BASE:    'https://historia.datnet.online',
+  API:     'https://historia.datnet.online/hd-api',
+  WEB:     'http://172.17.164.100',
 };
-const H = {
-  'xc-token': CFG.TOKEN,
-  'Content-Type': 'application/json',
-};
+
+// Header otentikasi ke backend baru — JWT, bukan token NocoDB.
+function authHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  if (session?.token) h['Authorization'] = 'Bearer ' + session.token;
+  return h;
+}
 
 // ── STATE ──
 let session = null;
-let baseId  = null;
-let tables  = {};   // { tableName: tableId }
 let currentDevice  = null;
 let currentFilter  = 'Semua';
 let histFilter     = 'Semua';
@@ -1653,8 +1655,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   setDate();
   session = loadSession();
   if (session) {
-    baseId = session.baseId;
-    tables = session.tables;
     showScreen('home', false);
     screenStack = ['home'];
     loadHomeData();
@@ -1668,89 +1668,9 @@ function setDate() {
 }
 
 // ── PASSWORD VERIFICATION ──
-// Support: sha256iter (HTTP) dan pbkdf2 (HTTPS)
-async function sha256(message) {
-  if (crypto.subtle) {
-    const enc = new TextEncoder();
-    const buf = await crypto.subtle.digest('SHA-256', enc.encode(message));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-  }
-  return sha256Manual(message);
-}
-
-function sha256Manual(str) {
-  function rightRotate(value, amount) {
-    return (value >>> amount) | (value << (32 - amount));
-  }
-  const mathPow = Math.pow, maxWord = mathPow(2,32);
-  let result = '', words = [];
-  const asciiBitLength = str.length * 8;
-  let hash = sha256Manual.h = sha256Manual.h || [];
-  let k    = sha256Manual.k = sha256Manual.k || [];
-  let primeCounter = k.length;
-  const isComposite = {};
-  for (let candidate = 2; primeCounter < 64; candidate++) {
-    if (!isComposite[candidate]) {
-      for (let i = 0; i < 313; i += candidate) isComposite[i] = candidate;
-      hash[primeCounter] = (mathPow(candidate,.5)*maxWord)|0;
-      k[primeCounter++]  = (mathPow(candidate,1/3)*maxWord)|0;
-    }
-  }
-  str += '\x80';
-  while (str.length % 64 - 56) str += '\x00';
-  for (let i = 0; i < str.length; i++) {
-    const j = str.charCodeAt(i);
-    if (j >> 8) return '';
-    words[i >> 2] |= j << ((3 - i) % 4) * 8;
-  }
-  words[words.length] = ((asciiBitLength/maxWord)|0);
-  words[words.length] = (asciiBitLength|0);
-  for (let j = 0; j < words.length;) {
-    const w = words.slice(j, j += 16), oldHash = hash.slice(0);
-    for (let i = 0; i < 64; i++) {
-      const w15 = w[i-15], w2 = w[i-2], a = hash[0], e = hash[4];
-      const temp1 = hash[7]+(rightRotate(e,6)^rightRotate(e,11)^rightRotate(e,25))+((e&hash[5])^(~e&hash[6]))+k[i]+(w[i]=(i<16)?w[i]:(w[i-16]+(rightRotate(w15,7)^rightRotate(w15,18)^(w15>>>3))+w[i-7]+(rightRotate(w2,17)^rightRotate(w2,19)^(w2>>>10)))|0);
-      const temp2 = (rightRotate(a,2)^rightRotate(a,13)^rightRotate(a,22))+((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
-      hash = [(temp1+temp2)|0].concat(hash); hash[4]=(hash[4]+temp1)|0; hash.length=8;
-    }
-    for (let i = 0; i < 8; i++) hash[i]=(hash[i]+oldHash[i])|0;
-  }
-  for (let i = 0; i < 8; i++) for (let j = 3; j+1; j--) { const b=(hash[i]>>(j*8))&255; result+=((b<16)?0:'')+b.toString(16); }
-  return result;
-}
-
-async function verifyPassword(password, storedHash) {
-  try {
-    const parts = storedHash.split('$');
-    if (parts.length !== 3) return false;
-    const [methodPart, salt, expectedHex] = parts;
-
-    // Format sha256iter (HTTP-safe)
-    if (methodPart.startsWith('sha256iter:')) {
-      const ITER = parseInt(methodPart.split(':')[1]) || 10000;
-      let current = password + ':' + salt;
-      for (let i = 0; i < ITER; i++) {
-        current = await sha256(current + password + salt + i);
-      }
-      return current === expectedHex;
-    }
-
-    // Format pbkdf2 (HTTPS only)
-    if (methodPart.startsWith('pbkdf2:') && crypto.subtle) {
-      const iterations = parseInt(methodPart.split(':')[2]) || 1000000;
-      const enc = new TextEncoder();
-      const key = await crypto.subtle.importKey('raw', enc.encode(password), { name:'PBKDF2' }, false, ['deriveBits']);
-      const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', hash:'SHA-256', salt:enc.encode(salt), iterations }, key, 256);
-      const hex  = Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2,'0')).join('');
-      return hex === expectedHex;
-    }
-
-    return false;
-  } catch(e) {
-    console.error('verifyPassword error:', e);
-    return false;
-  }
-}
+// v2: TIDAK ADA LAGI verifikasi password di client. Backend API yang
+// melakukan ini secara aman di server, client cukup kirim email+password
+// sekali via HTTPS dan terima JWT sebagai balasannya.
 
 // ── SESSION ──
 function saveSession(data) {
@@ -1847,13 +1767,25 @@ function navTo(tab) {
 }
 
 // ── API HELPER ──
+// Helper utama untuk semua panggilan ke backend API kustom kita.
+// `path` di sini relatif ke CFG.API, contoh: api('/devices'), api('/records?type=PM')
 async function api(path, opts = {}) {
-  const res = await fetch(CFG.BASE + path, {
-    headers: H, ...opts,
+  const res = await fetch(CFG.API + path, {
+    ...opts,
+    headers: { ...authHeaders(), ...(opts.headers || {}) },
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
-  if (!res.ok) throw new Error(`API error ${res.status}`);
-  return res.json();
+
+  if (res.status === 401) {
+    // Token expired/tidak valid → paksa logout, minta login ulang.
+    toast('Sesi Anda berakhir. Silakan login ulang.', true);
+    doLogout();
+    throw new Error('Sesi berakhir');
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `API error ${res.status}`);
+  return data;
 }
 
 // ── LOGIN ──
@@ -1871,42 +1803,15 @@ async function doLogin() {
   btn.disabled = true; btn.textContent = 'Menghubungkan...';
 
   try {
-    // 1. Ambil daftar base
-    const basesData = await api('/api/v1/db/meta/projects/');
-    const bases = basesData?.list || [];
-    const hBase = bases.find(b => b.title?.toLowerCase().includes('historia'));
-    if (!hBase) throw new Error('Base Historia_danet tidak ditemukan di server');
-    baseId = hBase.id;
+    const res = await fetch(`${CFG.API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pwd }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login gagal');
 
-    // 2. Ambil tabel
-    const tablesData = await api(`/api/v1/db/meta/projects/${baseId}/tables`);
-    const tList = tablesData?.list || [];
-    tList.forEach(t => { tables[t.title] = t.id; });
-
-    // 3. Query user
-    const userTableId = Object.entries(tables).find(([k]) => k.includes('users'))?.[1];
-    if (!userTableId) throw new Error('Tabel users tidak ditemukan');
-
-    const userData = await api(
-      `/api/v1/db/data/noco/${baseId}/${userTableId}?where=(email,eq,${encodeURIComponent(email)})&limit=1`
-    );
-    const users = userData?.list || [];
-    if (users.length === 0) throw new Error('Email tidak terdaftar');
-
-    const user = users[0];
-
-    // 4. Verifikasi password
-    const storedHash = user.password_hash || user.Password_hash || '';
-    if (!storedHash) throw new Error('Password belum diset. Hubungi administrator.');
-
-    const passwordValid = await verifyPassword(pwd, storedHash);
-    if (!passwordValid) throw new Error('Password salah');
-
-    // Cek status aktif
-    const isActive = user.is_active === true || user.is_active === 'true' || user.is_active === 1;
-    if (!isActive) throw new Error('Akun Anda tidak aktif. Hubungi administrator.');
-
-    session = { ...user, baseId, tables };
+    session = { ...data.user, token: data.token };
     saveSession(session);
 
     showScreen('home', false);
@@ -1966,16 +1871,13 @@ async function loadHomeData() {
   }
 
   try {
-    const recId = getTableId('maintenance_rec') || getTableId('03_maintenance');
-    if (!recId) return;
-
     const now = new Date();
     const ym  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
 
     const [pmD, cmD, recD] = await Promise.all([
-      api(`/api/v1/db/data/noco/${baseId}/${recId}?where=(type,eq,PM)~and(work_date,gte,${ym})&limit=1`),
-      api(`/api/v1/db/data/noco/${baseId}/${recId}?where=(type,eq,CM)~and(work_date,gte,${ym})&limit=1`),
-      api(`/api/v1/db/data/noco/${baseId}/${recId}?limit=6&sort=-Id`),
+      api(`/records?type=PM&work_date_gte=${ym}&limit=1`),
+      api(`/records?type=CM&work_date_gte=${ym}&limit=1`),
+      api('/records?limit=6'),
     ]);
 
     document.getElementById('stat-pm').textContent = pmD?.pageInfo?.totalRows ?? 0;
@@ -2000,12 +1902,6 @@ async function loadHomeData() {
   } catch(e) {
     console.error('loadHomeData:', e);
   }
-}
-
-// ── TABLE ID HELPER ──
-function getTableId(keyword) {
-  const entry = Object.entries(tables).find(([k]) => k.toLowerCase().includes(keyword.toLowerCase()));
-  return entry?.[1] || null;
 }
 
 // ── SCAN QR ──
@@ -2271,10 +2167,8 @@ function toggleManual() {
 }
 
 async function loadQuickDevices() {
-  const devId = getTableId('devices') || getTableId('02_devices');
-  if (!devId) return;
   try {
-    const data = await api(`/api/v1/db/data/noco/${baseId}/${devId}?limit=30&sort=device_code`);
+    const data = await api('/devices?limit=30');
     allDevices = data?.list || [];
     renderQuickDevices(allDevices);
   } catch(e) {}
@@ -2300,21 +2194,9 @@ function filterQuickDevices(kw) {
 }
 
 async function searchDevicesAPI(kw) {
-  const devId = getTableId('devices') || getTableId('02_devices');
-  if (!devId) return;
   try {
-    const [byCode, byName] = await Promise.all([
-      fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(device_code,like,%'+kw+'%)')}&limit=20&sort=device_code`, { headers: H }).then(r=>r.json()),
-      fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(name,like,%'+kw+'%)')}&limit=20&sort=device_code`, { headers: H }).then(r=>r.json()),
-    ]);
-    const merged = [...(byCode.list||[]), ...(byName.list||[])];
-    const seen   = new Set();
-    const result = merged.filter(d => {
-      const key = d.device_code;
-      if (seen.has(key)) return false;
-      seen.add(key); return true;
-    });
-    renderQuickDevices(result);
+    const data = await api('/devices?search=' + encodeURIComponent(kw));
+    renderQuickDevices(data?.list || []);
   } catch(e) {
     document.getElementById('quick-devices').innerHTML =
       '<div style="font-size:12px;color:var(--danger);text-align:center;padding:12px;">Gagal mencari</div>';
@@ -2340,9 +2222,6 @@ function renderQuickDevices(list) {
 }
 
 async function findDeviceByQuery(query) {
-  const devId = getTableId('devices') || getTableId('02_devices');
-  if (!devId) { toast('Tabel devices tidak ditemukan', true); return; }
-
   if (allDevices.length) {
     const q = query.toLowerCase();
     const found = allDevices.find(d =>
@@ -2355,20 +2234,9 @@ async function findDeviceByQuery(query) {
 
   toast('Mencari perangkat...');
   try {
-    const byCode = await fetch(
-      `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(device_code,like,%'+query+'%)')}&limit=1`,
-      { headers: H }
-    ).then(r => r.json());
-
-    if (byCode.list?.length) { findDevice(byCode.list[0].device_code); return; }
-
-    const byName = await fetch(
-      `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent('(name,like,%'+query+'%)')}&limit=1`,
-      { headers: H }
-    ).then(r => r.json());
-
-    if (byName.list?.length) { findDevice(byName.list[0].device_code); return; }
-
+    const data = await api('/devices?search=' + encodeURIComponent(query));
+    const list = data?.list || [];
+    if (list.length) { findDevice(list[0].device_code); return; }
     toast(`Perangkat "${query}" tidak ditemukan`, true);
   } catch(e) {
     toast('Gagal mencari: ' + e.message, true);
@@ -2376,15 +2244,10 @@ async function findDeviceByQuery(query) {
 }
 
 async function findDevice(code) {
-  const devId = getTableId('devices') || getTableId('02_devices');
-  if (!devId) { toast('Tabel devices tidak ditemukan', true); return; }
-
   toast('🔍 Mencari perangkat...');
   try {
-    const data = await api(
-      `/api/v1/db/data/noco/${baseId}/${devId}?where=(device_code,eq,${encodeURIComponent(code)})&limit=1`
-    );
-    const list = data?.list || [];
+    const data = await api('/devices?search=' + encodeURIComponent(code));
+    const list = (data?.list || []).filter(d => d.device_code === code);
     if (list.length === 0) {
       toast(`Perangkat "${code}" tidak ditemukan`, true);
       return;
@@ -2422,18 +2285,15 @@ function openDeviceHistory(dev) {
 }
 
 async function loadDeviceRecords() {
-  const recId = getTableId('maintenance_rec') || getTableId('03_maintenance');
-  const el    = document.getElementById('device-records');
+  const el = document.getElementById('device-records');
   el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
 
   try {
     const devId = currentDevice.id || currentDevice.Id;
-    let where = `(device_id,eq,${devId})`;
-    if (currentFilter !== 'Semua') where += `~and(type,eq,${currentFilter})`;
+    let url = `/records?device_id=${devId}&sort=-work_date&limit=1000`;
+    if (currentFilter !== 'Semua') url += `&type=${currentFilter}`;
 
-    const data = await api(
-      `/api/v1/db/data/noco/${baseId}/${recId}?where=${encodeURIComponent(where)}&sort=-work_date&limit=1000`
-    );
+    const data = await api(url);
     const recs = data?.list || [];
     if (!window._recCache) window._recCache = {};
     recs.forEach(r => {
@@ -2538,13 +2398,13 @@ function setFilter(f, el) {
 
 // ── ALL HISTORY ──
 async function loadAllHistory() {
-  const recId = getTableId('maintenance_rec') || getTableId('03_maintenance');
   const el = document.getElementById('hist-list');
   el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
 
   try {
-    let where = histFilter !== 'Semua' ? `?where=${encodeURIComponent(`(type,eq,${histFilter})`)}&` : '?';
-    const data = await api(`/api/v1/db/data/noco/${baseId}/${recId}${where}sort=-Id&limit=1000`);
+    let url = '/records?sort=-Id&limit=1000';
+    if (histFilter !== 'Semua') url += `&type=${histFilter}`;
+    const data = await api(url);
     allRecords = data?.list || [];
     if (!window._recCache) window._recCache = {};
     allRecords.forEach(r => {
@@ -2554,13 +2414,11 @@ async function loadAllHistory() {
 
     // Lookup nama perangkat untuk device_id yang belum ada di cache
     if (!window._deviceNameCache) window._deviceNameCache = {};
-    const devId = getTableId('devices') || getTableId('02_devices');
     const missingIds = [...new Set(allRecords.map(r => r.device_id).filter(Boolean))]
       .filter(id => !window._deviceNameCache[String(id)]);
-    if (devId && missingIds.length) {
+    if (missingIds.length) {
       try {
-        const where = missingIds.map(id => `(Id,eq,${id})`).join('~or');
-        const devData = await api(`/api/v1/db/data/noco/${baseId}/${devId}?where=${encodeURIComponent(where)}&limit=${missingIds.length}`);
+        const devData = await api('/devices?ids=' + missingIds.join(','));
         (devData?.list || []).forEach(d => {
           const did = d.Id || d.id;
           if (did) window._deviceNameCache[String(did)] = d.name || d.device_code || '';
@@ -2801,7 +2659,6 @@ async function saveRecord() {
   btn.disabled = true; btn.textContent = 'Menyimpan...';
 
   try {
-    const recId = getTableId('maintenance_rec') || getTableId('03_maintenance');
     const devId = currentDevice.id || currentDevice.Id;
 
     const payload = {
@@ -2821,7 +2678,6 @@ async function saveRecord() {
       action_taken:    document.getElementById('f-action').value.trim(),
       recommendation:  document.getElementById('f-recom').value.trim(),
       cost:            parseFloat(document.getElementById('f-cost').value) || 0,
-      created_by:      session?.id || session?.Id || null,
     };
 
     const btn2 = document.getElementById('btn-save');
@@ -2831,9 +2687,7 @@ async function saveRecord() {
       if (uploaded.length > 0) payload.photos = uploaded;
     }
 
-    await api(`/api/v1/db/data/noco/${baseId}/${recId}`, {
-      method: 'POST', body: payload
-    });
+    await api('/records', { method: 'POST', body: payload });
 
     toast(`✓ Record ${currentType} berhasil disimpan`);
     setTimeout(() => { goBack(); loadDeviceRecords(); }, 1000);
@@ -2849,11 +2703,10 @@ async function saveRecord() {
 let allDevicesList = [];
 
 async function loadDevices() {
-  const devId = getTableId('devices') || getTableId('02_devices');
-  const el    = document.getElementById('devices-list');
+  const el = document.getElementById('devices-list');
   if (!el) return;
   try {
-    const countData = await api('/api/v1/db/data/noco/' + baseId + '/' + devId + '?limit=1');
+    const countData = await api('/devices?limit=1');
     const total = countData && countData.pageInfo ? countData.pageInfo.totalRows : 0;
     document.getElementById('dev-count-top').textContent = total + ' perangkat terdaftar';
 
@@ -2948,20 +2801,10 @@ function filterDevices(kw) {
 }
 
 async function searchDevicesServer(kw) {
-  const devId = getTableId('devices') || getTableId('02_devices');
-  const el    = document.getElementById('devices-list');
+  const el = document.getElementById('devices-list');
   try {
-    const [byCode, byName] = await Promise.all([
-      api('/api/v1/db/data/noco/' + baseId + '/' + devId +
-        '?where=' + encodeURIComponent('(device_code,like,%' + kw + '%)') + '&limit=50&sort=device_code'),
-      api('/api/v1/db/data/noco/' + baseId + '/' + devId +
-        '?where=' + encodeURIComponent('(name,like,%' + kw + '%)') + '&limit=50&sort=device_code'),
-    ]);
-    const seen = {};
-    allDevicesList = [...(byCode.list||[]), ...(byName.list||[])].filter(function(d) {
-      if (seen[d.device_code]) return false;
-      seen[d.device_code] = true; return true;
-    });
+    const data = await api('/devices?search=' + encodeURIComponent(kw));
+    allDevicesList = data?.list || [];
     if (!allDevicesList.length) {
       el.innerHTML = '<div class="empty-state"><div style="font-size:32px;margin-bottom:8px;">😕</div>' +
         '<div style="font-size:14px;font-weight:700;">Tidak ditemukan</div>' +
@@ -3035,8 +2878,6 @@ async function saveDevice() {
   btn.disabled = true; btn.textContent = 'Menyimpan...';
 
   try {
-    const devTableId = getTableId('devices') || getTableId('02_devices');
-
     const fmtInputDate = (val) => {
       if (!val) return null;
       if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.substring(0,10);
@@ -3060,37 +2901,15 @@ async function saveDevice() {
       install_date:    fmtInputDate(document.getElementById('dev-f-install').value) || null,
       warranty_expiry: fmtInputDate(document.getElementById('dev-f-warranty').value) || null,
       notes:           document.getElementById('dev-f-notes').value.trim() || null,
-      updated_at:      new Date().toISOString().substring(0,19).replace('T',' '),
     };
 
     if (editId) {
-      const res = await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devTableId}/${editId}`, {
-        method: 'PATCH',
-        headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const errBody = await res.text();
-        throw new Error(`API ${res.status}: ${errBody}`);
-      }
+      await api('/devices/' + editId, { method: 'PATCH', body: payload });
       toast(`✓ Perangkat "${name}" berhasil diperbarui`);
       closeDeviceModal();
       setTimeout(() => loadDevices(), 800);
     } else {
-      payload.created_at = new Date().toISOString().substring(0,19).replace('T',' ');
-      payload.created_by = session?.id || null;
-
-      const res = await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devTableId}`, {
-        method: 'POST',
-        headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const errBody = await res.text();
-        console.error('Error body:', errBody);
-        throw new Error(`API ${res.status}: ${errBody}`);
-      }
-      const newDev = await res.json();
+      const newDev = await api('/devices', { method: 'POST', body: payload });
       const newId  = newDev?.Id || newDev?.id;
       toast(`✓ Perangkat "${name}" berhasil ditambahkan`);
 
@@ -3314,12 +3133,7 @@ async function showQRDevice(id) {
 
 async function saveQRToDatabase(devId, code, dataUrl) {
   try {
-    const devTableId = getTableId('devices') || getTableId('02_devices');
-    await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${devTableId}/${devId}`, {
-      method: 'PATCH',
-      headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ qr_code_url: `qr:${code}`, updated_at: new Date().toISOString().substring(0,19).replace('T',' ') }),
-    });
+    await api('/devices/' + devId, { method: 'PATCH', body: { qr_code_url: `qr:${code}` } });
     const idx = allDevicesList.findIndex(d => String(d.Id||d.id) === String(devId));
     if (idx !== -1) allDevicesList[idx].qr_code_url = `qr:${code}`;
     toast('✓ QR Code tersimpan di database');
@@ -3495,15 +3309,12 @@ async function saveEditRecord() {
   btn.disabled = true; btn.textContent = 'Menyimpan...';
 
   try {
-    const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
-
     const payload = {
       title:        document.getElementById('ef-title').value.trim(),
       duration_hours: parseFloat(document.getElementById('ef-dur').value) || null,
       status:       editRecStatus,
       description:  document.getElementById('ef-desc').value.trim(),
       action_taken: document.getElementById('ef-action').value.trim(),
-      updated_at:   new Date().toISOString().substring(0,19).replace('T',' '),
     };
 
     if (isAdmin) {
@@ -3534,16 +3345,7 @@ async function saveEditRecord() {
     }
     payload.photos = finalPhotos;
 
-    const res = await fetch(`${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}/${recId}`, {
-      method: 'PATCH',
-      headers: { 'xc-token': CFG.TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`API ${res.status}: ${err}`);
-    }
+    await api('/records/' + recId, { method: 'PATCH', body: payload });
 
     toast('✓ Record berhasil diperbarui');
     closeEditRecord();
@@ -3658,12 +3460,12 @@ async function doDeleteRecord() {
   const btn = document.getElementById('btn-del-record-ok');
   btn.disabled = true; btn.textContent = 'Menghapus...';
   try {
-    const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
     const res = await fetchWithTimeout(
-      `${CFG.BASE}/api/v1/db/data/noco/${baseId}/${recTableId}/${_delRecordId}`,
-      { method:'DELETE', headers:{'xc-token':CFG.TOKEN,'Content-Type':'application/json'} }
+      `${CFG.API}/records/${_delRecordId}`,
+      { method: 'DELETE', headers: authHeaders() }
     );
-    if (!res.ok) { const e=await res.text(); throw new Error(`API ${res.status}: ${e}`); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `API error ${res.status}`);
     toast(`✓ Record "${_delRecordName}" berhasil dihapus`);
     closeDeleteRecord();
     setTimeout(() => { if (currentDevice) loadDeviceRecords(); else loadAllHistory(); }, 400);
@@ -3739,13 +3541,13 @@ async function uploadPhotos(files) {
       }
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch(`${CFG.BASE}/api/v1/db/storage/upload?path=maintenance`, {
+      const res = await fetch(`${CFG.API}/upload`, {
         method: 'POST',
-        headers: { 'xc-token': CFG.TOKEN },
+        headers: session?.token ? { 'Authorization': 'Bearer ' + session.token } : {},
         body: fd,
       });
-      if (!res.ok) { const t=await res.text(); throw new Error(t); }
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Upload error ${res.status}`);
       const result = Array.isArray(data) ? data[0] : data;
       if (result) uploaded.push(result);
     } catch(e) {
@@ -3940,33 +3742,15 @@ async function doDeleteDevice() {
   if (!_delDeviceId) return;
   const btn = document.getElementById('btn-del-device-ok');
   btn.disabled = true;
+  btn.textContent = 'Menghapus perangkat & record terkait...';
   try {
-    const devTableId = getTableId('devices') || getTableId('02_devices');
-    const recTableId = getTableId('maintenance_rec') || getTableId('03_maintenance');
-    btn.textContent = 'Mencari record PM/CM...';
-    let allRecs = [], page = 0;
-    while (true) {
-      const res = await fetchWithTimeout(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + recTableId +
-        '?where=' + encodeURIComponent('(device_id,eq,' + _delDeviceId + ')') +
-        '&limit=100&offset=' + (page * 100) + '&fields=Id,id', { headers: H });
-      const d = await res.json();
-      const rows = d.list || [];
-      allRecs = allRecs.concat(rows);
-      if (rows.length < 100) break;
-      page++;
-    }
-    let deleted = 0;
-    for (const rec of allRecs) {
-      const recId = rec.Id || rec.id;
-      btn.textContent = 'Hapus record ' + (++deleted) + '/' + allRecs.length + '...';
-      await fetchWithTimeout(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + recTableId + '/' + recId,
-        { method: 'DELETE', headers: H });
-    }
-    btn.textContent = 'Menghapus perangkat...';
-    const res = await fetchWithTimeout(CFG.BASE + '/api/v1/db/data/noco/' + baseId + '/' + devTableId + '/' + _delDeviceId,
-      { method: 'DELETE', headers: H });
-    if (!res.ok) { const e = await res.text(); throw new Error('API ' + res.status + ': ' + e); }
-    toast('✓ Perangkat "' + _delDeviceName + '" & ' + allRecs.length + ' record berhasil dihapus');
+    const res = await fetchWithTimeout(
+      `${CFG.API}/devices/${_delDeviceId}`,
+      { method: 'DELETE', headers: authHeaders() }
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `API error ${res.status}`);
+    toast(`✓ Perangkat "${_delDeviceName}" & ${data.deletedRecords ?? 0} record berhasil dihapus`);
     closeDeleteDevice();
     setTimeout(loadDevices, 500);
   } catch(e) {
